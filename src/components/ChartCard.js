@@ -96,17 +96,19 @@ export default function ChartCard({ initialCoin = "bitcoin", showDropdown = true
         {/* Coin Selector - shifted to top right */}
         <div className="flex items-center gap-4 mb-4">
           {/* Coin Selector */}
-          <select
-            value={selectedCoin}
-            onChange={(e) => setSelectedCoin(e.target.value)}
-            className="bg-gray-700 hover:bg-gray-600 transition w-32 py-2 px-1 rounded-lg font-medium shadow-lg focus:outline-none focus:ring-4 focus:ring-green-400 cursor-pointer text-clip"
-          >
-            {coins.map((coin) => (
-              <option key={coin.id} value={coin.id}>
-                {coin.name}
-              </option>
-            ))}
-          </select>
+          {showDropdown && (
+            <select
+              value={selectedCoin}
+              onChange={(e) => setSelectedCoin(e.target.value)}
+              className="bg-gray-700 hover:bg-gray-600 transition w-32 py-2 px-1 rounded-lg font-medium shadow-lg focus:outline-none focus:ring-4 focus:ring-green-400 cursor-pointer text-clip"
+            >
+              {coins.map((coin) => (
+                <option key={coin.id} value={coin.id}>
+                  {coin.name}
+                </option>
+              ))}
+            </select>
+          )}
 
           {/* Currency Selector */}
           <select

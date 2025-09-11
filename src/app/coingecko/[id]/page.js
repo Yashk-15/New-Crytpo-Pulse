@@ -1,17 +1,24 @@
 "use client";
-import { useEffect, useState, use } from "react";
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Image from "next/image";
 import ChartCard from "@/components/ChartCard";
+import {
+  addToWatchlist,
+  removeFromWatchlist,
+  isInWatchlist,
+} from "@/utils/watchlist";
 
-export default function CoinPage({ params }) {
-  const { id } = use(params);
+export default function CoinPage() {
+  const { id } = useParams();
   const [coin, setCoin] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [inWatchlist, setInWatchlist] = useState(false);
 
   useEffect(() => {
     const fetchCoinDetails = async () => {
       try {
-        const res = await fetch(`/api/coingecko/${id}`); // ✅ use proxy
+        const res = await fetch(`/api/coingecko/${id}`);
         const data = await res.json();
         setCoin(data);
       } catch (err) {
@@ -22,7 +29,18 @@ export default function CoinPage({ params }) {
     };
 
     fetchCoinDetails();
+    setInWatchlist(isInWatchlist(id));
   }, [id]);
+
+  const handleWatchlistToggle = () => {
+    if (inWatchlist) {
+      removeFromWatchlist(id);
+      setInWatchlist(false);
+    } else {
+      addToWatchlist(id);
+      setInWatchlist(true);
+    }
+  };
 
   if (loading) {
     return (
@@ -43,7 +61,7 @@ export default function CoinPage({ params }) {
       {/* Header */}
       <div className="flex items-center gap-4">
         <Image
-          src={coin.image?.small || '/placeholder-coin.svg'}
+          src={coin.image?.small || "/placeholder-coin.svg"}
           alt={coin.name}
           width={40}
           height={40}
@@ -52,9 +70,22 @@ export default function CoinPage({ params }) {
         <h1 className="text-2xl font-bold">
           {coin.name} ({coin.symbol.toUpperCase()})
         </h1>
+
+        {/* ✅ Watchlist Button */}
+        <button
+          onClick={handleWatchlistToggle}
+          className={`ml-auto px-3 py-1.5 rounded-md text-sm font-medium transition-colors duration-200
+    ${inWatchlist
+              ? "bg-red-500/80 hover:bg-red-600 text-white"
+              : "bg-emerald-500/80 hover:bg-emerald-600 text-white"
+            }`}
+        >
+          {inWatchlist ? "− Watchlist" : "+ Watchlist"}
+        </button>
+
       </div>
 
-      {/* Market info */}
+      {/* Market Info */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
         <div className="bg-surface2 p-4 rounded-lg">
           <p className="text-gray-400">Current Price (USD)</p>
@@ -79,7 +110,7 @@ export default function CoinPage({ params }) {
       {/* Chart */}
       <div>
         <h2 className="text-xl font-semibold mb-2">Chart</h2>
-        <ChartCard key={id} initialCoin={id} />
+        <ChartCard key={id} initialCoin={id} showDropdown={false} />
       </div>
 
       {/* Description */}
@@ -95,4 +126,5 @@ export default function CoinPage({ params }) {
     </div>
   );
 }
+
 

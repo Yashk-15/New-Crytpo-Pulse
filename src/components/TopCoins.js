@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import ChartCard from "./ChartCard";
+import MyPortfolio from "./MyPortfolio";
 
 export default function TopCoins() {
   const [coins, setCoins] = useState([]);
@@ -23,8 +24,8 @@ export default function TopCoins() {
 
   return (
     <div className="w-full flex mt-8 px-8">
-  {/* Left Side - Top Coins */}
-  <div className="w-full md:w-1/3">
+  {/* Left Side - Top Coins + Portfolio */}
+  <div className="w-full md:w-1/3 md:sticky md:top-4 self-start">
     <h2 className="text-xl font-black mb-4 text-gray-100 border-l-4 border-green-500 pl-3 -mt-2">
       Top 3 Cryptocurrencies
     </h2>
@@ -64,6 +65,9 @@ export default function TopCoins() {
             </div>
           ))}
         </div>
+
+        {/* My Portfolio below top coins, same column width */}
+        <MyPortfolio />
       </div>
 
       {/* Right Side - Chart */}

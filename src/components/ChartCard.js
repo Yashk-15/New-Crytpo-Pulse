@@ -192,7 +192,7 @@ export default function ChartCard({ initialCoin = "bitcoin", showDropdown = true
       </ResponsiveContainer>
     </div>
   );
-}  
+}
 
 
 

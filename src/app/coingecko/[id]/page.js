@@ -8,12 +8,16 @@ import {
   removeFromWatchlist,
   isInWatchlist,
 } from "@/utils/watchlist";
+import { addToPortfolio } from "@/utils/portfolio";
 
 export default function CoinPage() {
   const { id } = useParams();
   const [coin, setCoin] = useState(null);
   const [loading, setLoading] = useState(true);
   const [inWatchlist, setInWatchlist] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
 
   useEffect(() => {
     const fetchCoinDetails = async () => {
@@ -39,6 +43,26 @@ export default function CoinPage() {
     } else {
       addToWatchlist(id);
       setInWatchlist(true);
+    }
+  };
+
+  const handleAddToPortfolio = () => {
+    const parsed = Number(amount);
+    if (!parsed || parsed <= 0) {
+      setSaveMsg("Enter a valid amount");
+      return;
+    }
+    setSaving(true);
+    try {
+      addToPortfolio(id, parsed);
+      setSaveMsg("Added to portfolio");
+      setAmount("");
+    } catch (e) {
+      console.error("Failed to add to portfolio", e);
+      setSaveMsg("Failed to add");
+    } finally {
+      setSaving(false);
+      setTimeout(() => setSaveMsg(""), 2000);
     }
   };
 
@@ -83,6 +107,28 @@ export default function CoinPage() {
           {inWatchlist ? "− Watchlist" : "+ Watchlist"}
         </button>
 
+      </div>
+
+      {/* Add to Portfolio */}
+      <div className="flex items-center gap-3 bg-surface2 p-4 rounded-lg">
+        <label className="text-sm text-gray-300">Amount owned</label>
+        <input
+          type="number"
+          min="0"
+          step="any"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="e.g. 0.25"
+          className="bg-gray-800 text-white text-sm px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 w-40"
+        />
+        <button
+          onClick={handleAddToPortfolio}
+          disabled={saving}
+          className="px-3 py-2 rounded-md text-sm font-medium bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60"
+        >
+          {saving ? "Saving..." : "+ Portfolio"}
+        </button>
+        {saveMsg && <span className="text-xs text-gray-400 ml-2">{saveMsg}</span>}
       </div>
 
       {/* Market Info */}

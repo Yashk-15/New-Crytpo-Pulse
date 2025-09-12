@@ -1,21 +1,30 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import Image from 'next/image';
 
-export default function CoinsTable() {
+function CoinsTable() {
   const [coins, setCoins] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function fetchCoins() {
       try {
+        setLoading(true);
+        setError(null);
         const res = await fetch(
           'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=false'
         );
+        
+        if (!res.ok) {
+          throw new Error(`Failed to fetch coins: ${res.status}`);
+        }
+        
         const data = await res.json();
         setCoins(data);
       } catch (error) {
         console.error('Error fetching coins:', error);
+        setError(error.message);
       } finally {
         setLoading(false);
       }
@@ -27,6 +36,16 @@ export default function CoinsTable() {
     return (
       <div className="flex items-center justify-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-gray-800 rounded-xl p-6">
+        <div className="text-red-400 text-center py-8">
+          Error loading coins: {error}
+        </div>
       </div>
     );
   }
@@ -83,3 +102,5 @@ export default function CoinsTable() {
     </div>
   );
 }
+
+export default memo(CoinsTable);

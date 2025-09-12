@@ -1,7 +1,8 @@
 'use client';
 import React from 'react';
 import Navbar from '../components/Navbar';
-import TopCoins from '../components/TopCoins';  
+import TopCoins from '../components/TopCoins';
+  
 
 export default function Page() {
   return (

@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 
+
 export default function Navbar({ onSearch }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -101,20 +103,30 @@ export default function Navbar({ onSearch }) {
 
         {/* Navigation */}
         <nav className="flex-1 flex items-center gap-2 justify-center">
-          {["Discover", "Trending", "Liquidity", "About"].map((t) => (
-            <button
-              key={t}
-              className={`px-3 py-1 rounded-full text-sm transition-colors
-                ${
-                  t === "Discover"
-                    ? "bg-green-500 text-black font-semibold"
-                    : "text-gray-300 hover:text-white hover:bg-surface2"
-                }`}
-            >
-              {t}
-            </button>
-          ))}
+          {[
+            { label: "Discover", path: "/" },
+            { label: "Trending", path: "/trending" },
+            { label: "Liquidity", path: "/Liquidity" },
+            { label: "About", path: "/about" },
+          ].map((item) => {
+            const isActive = pathname === item.path;
+            return (
+              <Link key={item.label} href={item.path}>
+                <button
+                  className={`px-3 py-1 rounded-full text-sm transition-colors
+            ${isActive
+                      ? "bg-green-500 text-black font-semibold"
+                      : "text-gray-300 hover:text-white hover:bg-surface2"
+                    }`}
+                >
+                  {item.label}
+                </button>
+              </Link>
+            );
+          })}
         </nav>
+
+
 
         {/* Search + Actions */}
         <div className="flex items-center gap-3">
@@ -156,11 +168,10 @@ export default function Navbar({ onSearch }) {
                     key={coin.id}
                     ref={(el) => (itemRefs.current[index] = el)}
                     onClick={() => handleSelectCoin(coin)}
-                    className={`px-3 py-2 text-sm flex items-center gap-2 cursor-pointer ${
-                      index === highlightedIndex
+                    className={`px-3 py-2 text-sm flex items-center gap-2 cursor-pointer ${index === highlightedIndex
                         ? "bg-green-600 text-white"
                         : "text-gray-200 hover:bg-gray-700"
-                    }`}
+                      }`}
                   >
                     <Image
                       src={coin.thumb}

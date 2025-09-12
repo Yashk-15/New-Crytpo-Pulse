@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo, useCallback } from "react";
 import {
   LineChart,
   Line,
@@ -9,13 +9,15 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-export default function ChartCard({ initialCoin = "bitcoin", showDropdown = true }) {
+function ChartCard({ initialCoin = "bitcoin", showDropdown = true }) {
   const [coins, setCoins] = useState([]);
   const [selectedCoin, setSelectedCoin] = useState(initialCoin);
   const [coinPrice, setCoinPrice] = useState(null);
   const [timeRange, setTimeRange] = useState("7"); // default: 7 days
   const [chartData, setChartData] = useState([]);
   const [currency, setCurrency] = useState("usd");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Fetch coins for dropdown
   useEffect(() => {
@@ -39,9 +41,16 @@ export default function ChartCard({ initialCoin = "bitcoin", showDropdown = true
   useEffect(() => {
     async function fetchChart() {
       try {
+        setLoading(true);
+        setError(null);
         const res = await fetch(
           `/api/coingecko/${selectedCoin}?days=${timeRange}&vs_currency=${currency}`
         );
+        
+        if (!res.ok) {
+          throw new Error(`Failed to fetch chart data: ${res.status}`);
+        }
+        
         const data = await res.json();
 
         const prices = Array.isArray(data?.prices) ? data.prices : [];
@@ -80,6 +89,9 @@ export default function ChartCard({ initialCoin = "bitcoin", showDropdown = true
         }
       } catch (error) {
         console.error("Error fetching chart:", error);
+        setError(error.message);
+      } finally {
+        setLoading(false);
       }
     }
 
@@ -160,39 +172,51 @@ export default function ChartCard({ initialCoin = "bitcoin", showDropdown = true
         ))}
       </div>
 
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart
-          data={chartData}
-          margin={{ top: 10, right: 40, left: 1, bottom: 0 }} // 👈 left margin added
-        >
-          <XAxis
-            dataKey="date"
-            tick={{ fill: "#9CA3AF", fontSize: 12 }}
-          />
-          <YAxis
-            domain={["auto", "auto"]}
-            tick={{ fill: "#9CA3AF", fontSize: 12 }}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "#1F2937",
-              borderRadius: "8px",
-              border: "none",
-              color: "#fff",
-            }}
-          />
-          <Line
-            type="monotone"
-            dataKey="price"
-            stroke="#22c55e"
-            strokeWidth={2}
-            dot={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+      {error ? (
+        <div className="flex items-center justify-center h-64 text-red-400">
+          Error loading chart: {error}
+        </div>
+      ) : loading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-400"></div>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart
+            data={chartData}
+            margin={{ top: 10, right: 40, left: 1, bottom: 0 }} // 👈 left margin added
+          >
+            <XAxis
+              dataKey="date"
+              tick={{ fill: "#9CA3AF", fontSize: 12 }}
+            />
+            <YAxis
+              domain={["auto", "auto"]}
+              tick={{ fill: "#9CA3AF", fontSize: 12 }}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "#1F2937",
+                borderRadius: "8px",
+                border: "none",
+                color: "#fff",
+              }}
+            />
+            <Line
+              type="monotone"
+              dataKey="price"
+              stroke="#22c55e"
+              strokeWidth={2}
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
     </div>
   );
 }
+
+export default memo(ChartCard);
 
 
 

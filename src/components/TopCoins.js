@@ -1,26 +1,67 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import Image from 'next/image';
 import ChartCard from "./ChartCard";
 import MyPortfolio from "./MyPortfolio";
 
-export default function TopCoins() {
+function TopCoins() {
   const [coins, setCoins] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function fetchCoins() {
       try {
+        setLoading(true);
+        setError(null);
         const res = await fetch(
           'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=3&page=1&sparkline=false'
         );
+        
+        if (!res.ok) {
+          throw new Error(`Failed to fetch coins: ${res.status}`);
+        }
+        
         const data = await res.json();
         setCoins(data);
       } catch (error) {
         console.error('Error fetching coins:', error);
+        setError(error.message);
+      } finally {
+        setLoading(false);
       }
     }
     fetchCoins();
   }, []);
+
+  if (loading) {
+    return (
+      <div className="w-full flex mt-8 px-8">
+        <div className="w-full md:w-1/3 md:sticky md:top-4 self-start">
+          <div className="animate-pulse">
+            <div className="h-6 bg-gray-700 rounded mb-4"></div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-gray-700 rounded-xl h-32"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full flex mt-8 px-8">
+        <div className="w-full md:w-1/3 md:sticky md:top-4 self-start">
+          <div className="text-red-400 text-center py-8">
+            Error loading coins: {error}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full flex mt-8 px-8">
@@ -77,6 +118,8 @@ export default function TopCoins() {
       </div>
   );
 }
+
+export default memo(TopCoins);
 
 
 

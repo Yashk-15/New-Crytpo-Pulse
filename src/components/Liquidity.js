@@ -7,117 +7,268 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  BarChart,
+  Bar,
+  Legend,
 } from "recharts";
 
-export default function LiquidityCard({ coinId }) {
-  const [data, setData] = useState(null);
-  const [chartData, setChartData] = useState([]);
+export default function LiquidityCard({ coinId = "bitcoin" }) {
+  const [coins, setCoins] = useState([]);
+  const [selectedCoin, setSelectedCoin] = useState(coinId);
+  const [coin, setCoin] = useState(null);
+  const [trendData, setTrendData] = useState([]);
+  const [topCoins, setTopCoins] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
+  // Update selectedCoin when coinId prop changes
+  useEffect(() => {
+    setSelectedCoin(coinId);
+  }, [coinId]);
+
+  // Load top coins for dropdown
+  useEffect(() => {
+    async function fetchCoins() {
+      try {
+        const res = await fetch(
+          "/api/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1"
+        );
+        const data = await res.json();
+        setCoins(data);
+      } catch (err) {
+        console.error("Error fetching coin list:", err);
+        setError("Failed to load coin list");
+      }
+    }
+    fetchCoins();
+  }, []);
+
+  // Fetch liquidity data for selected coin
   useEffect(() => {
     const fetchData = async () => {
-      const res = await fetch(
-        `https://api.coingecko.com/api/v3/coins/${coinId}`
-      );
-      const json = await res.json();
-      setData(json);
-
-      // Prepare chart from market chart endpoint
-      const chartRes = await fetch(
-        `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=7`
-      );
-      const chartJson = await chartRes.json();
-
-      const formatted = chartJson.total_volumes.map(([time, vol]) => ({
-        time: new Date(time).toLocaleDateString(),
-        volume: vol,
-      }));
-
-      setChartData(formatted);
+      if (!selectedCoin) return;
+      
+      setLoading(true);
+      setError(null);
+      
+      try {
+        // Fetch all liquidity data in one API call
+        const res = await fetch(
+          `/api/coins/liquidity?id=${selectedCoin}&days=1`
+        );
+        if (!res.ok) throw new Error(`Failed to fetch liquidity data: ${res.status}`);
+        const json = await res.json();
+        
+        setCoin(json.coin);
+        
+        // Format trend data
+        if (json.chartData?.total_volumes) {
+          const formatted = json.chartData.total_volumes.map(([time, vol]) => ({
+            time: new Date(time).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            volume: vol,
+          }));
+          setTrendData(formatted);
+        }
+        
+        setTopCoins(json.topCoins || []);
+      } catch (err) {
+        console.error("Error fetching liquidity data:", err);
+        setError(err.message || "Failed to load liquidity data");
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchData();
-  }, [coinId]);
+  }, [selectedCoin]);
 
-  if (!data) return <p className="text-gray-400">Loading liquidity data...</p>;
+  // Helper function to format large numbers
+  const formatVolume = (num) => {
+    if (num >= 1e9) return `${(num / 1e9).toFixed(1)}B`;
+    if (num >= 1e6) return `${(num / 1e6).toFixed(1)}M`;
+    if (num >= 1e3) return `${(num / 1e3).toFixed(1)}K`;
+    return num.toFixed(0);
+  };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-danger/10 border border-danger/20 rounded-xl p-6 text-center">
+          <p className="text-danger font-medium">Error Loading Data</p>
+          <p className="text-gray-400 text-sm mt-1">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading if no coin data yet
+  if (!coin) return <p className="text-gray-400">Loading liquidity data...</p>;
+
+  // Risk level from volume - Fixed color logic
+  const volume = coin.market_data.total_volume.usd;
+  let risk = { label: "High", color: "text-green-400" }; // High liquidity = good (green)
+  if (volume < 500_000_000) risk = { label: "Low", color: "text-red-400" }; // Low liquidity = bad (red)
+  else if (volume < 5_000_000_000) risk = { label: "Medium", color: "text-yellow-400" }; // Medium liquidity = caution (yellow)
 
   return (
-    <div className="bg-surface2 rounded-2xl shadow-lg p-6 mb-6">
-      <h2 className="text-xl font-semibold mb-4 text-green-400">
-        {data.name} Liquidity Overview
-      </h2>
+    <div className="space-y-6">
+      {/* Dropdown */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold text-txt">Liquidity Analysis</h2>
+        <select
+          value={selectedCoin}
+          onChange={(e) => setSelectedCoin(e.target.value)}
+          className="bg-surface hover:bg-surface2 transition-colors w-48 py-2 px-3 rounded-lg font-medium shadow-lg focus:outline-none focus:ring-2 focus:ring-accent-500 cursor-pointer text-sm text-txt border border-border"
+        >
+          {coins.map((c) => (
+            <option key={c.id} value={c.id} className="bg-surface">
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      {/* 📘 Definition */}
-      <p className="text-gray-300 mb-6">
-        Liquidity refers to how easily an asset can be bought or sold in the
-        market without affecting its price. Higher liquidity means smoother
-        trades, tighter spreads, and lower volatility.
-      </p>
+      {/* 1. Definition */}
+      <div className="bg-surface2 rounded-2xl p-4 shadow-lg">
+        <p className="text-gray-300">
+          💡 Liquidity shows how easily a coin can be traded without large price swings.
+        </p>
+      </div>
 
-      {/* 📊 Metrics */}
-      <div className="grid grid-cols-3 gap-4 mb-6 text-center">
-        <div className="p-4 bg-surface rounded-xl">
-          <p className="text-gray-400 text-sm">24h Volume</p>
-          <p className="text-green-400 font-bold">
-            ${data.market_data.total_volume.usd.toLocaleString()}
+      {/* 2. Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="p-4 bg-surface rounded-xl text-center border border-border">
+          <p className="text-muted text-sm font-medium">24h Volume</p>
+          <p className="text-accent-500 font-bold text-lg mt-1">
+            ${formatVolume(volume)}
           </p>
         </div>
-        <div className="p-4 bg-surface rounded-xl">
-          <p className="text-gray-400 text-sm">Market Cap Rank</p>
-          <p className="text-green-400 font-bold">#{data.market_cap_rank}</p>
+        <div className="p-4 bg-surface rounded-xl text-center border border-border">
+          <p className="text-muted text-sm font-medium">Market Cap Rank</p>
+          <p className="text-accent-500 font-bold text-lg mt-1">
+            #{coin.market_cap_rank || "N/A"}
+          </p>
         </div>
-        <div className="p-4 bg-surface rounded-xl">
-          <p className="text-gray-400 text-sm">Status</p>
-          <p
-            className={`font-bold ${
-              data.liquidity_score > 0.5 ? "text-green-400" : "text-red-400"
-            }`}
-          >
-            {data.liquidity_score > 0.5 ? "High" : "Low"}
+        <div className="p-4 bg-surface rounded-xl text-center border border-border">
+          <p className="text-muted text-sm font-medium">Liquidity Score</p>
+          <p className="text-accent-500 font-bold text-lg mt-1">
+            {coin.liquidity_score?.toFixed(2) ?? "N/A"}
           </p>
         </div>
       </div>
 
-      {/* 📈 Chart */}
-      <div className="bg-surface rounded-xl p-4 mb-6">
-        <p className="text-gray-400 text-sm mb-2">7D Trading Volume</p>
+      {/* 3a. Bar Chart */}
+      <div className="bg-surface2 rounded-xl p-6 border border-border">
+        <p className="text-txt text-sm font-medium mb-4">Top 5 Coins by Liquidity (24h Volume)</p>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <XAxis dataKey="time" tick={{ fill: "#9CA3AF", fontSize: 12 }} />
-              <YAxis tick={{ fill: "#9CA3AF", fontSize: 12 }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#1E293B",
-                  borderRadius: "0.5rem",
-                  border: "none",
-                }}
-                labelStyle={{ color: "#E5E7EB" }}
+            <BarChart data={topCoins} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <XAxis 
+                dataKey="name" 
+                tick={{ fill: "#A0A1A1", fontSize: 12 }} 
+                axisLine={{ stroke: "#A0A1A1" }}
               />
-              <Line
-                type="monotone"
-                dataKey="volume"
-                stroke="#10B981"
-                strokeWidth={2}
+              <YAxis 
+                tick={{ fill: "#A0A1A1", fontSize: 12 }} 
+                axisLine={{ stroke: "#A0A1A1" }}
+                tickFormatter={formatVolume}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  background: "#151615", 
+                  border: "1px solid #A0A1A1",
+                  borderRadius: "0.5rem",
+                  color: "#EDEEEE"
+                }} 
+                formatter={(value) => [`$${formatVolume(value)}`, "Volume"]}
+              />
+              <Bar dataKey="volume" fill="#2CD493" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* 3b. Line Chart */}
+      <div className="bg-surface2 rounded-xl p-6 border border-border">
+        <p className="text-txt text-sm font-medium mb-4">24h Liquidity Trend</p>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={trendData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+              <XAxis 
+                dataKey="time" 
+                tick={{ fill: "#A0A1A1", fontSize: 10 }} 
+                axisLine={{ stroke: "#A0A1A1" }}
+              />
+              <YAxis 
+                tick={{ fill: "#A0A1A1", fontSize: 10 }} 
+                axisLine={{ stroke: "#A0A1A1" }}
+                tickFormatter={formatVolume}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  background: "#151615", 
+                  border: "1px solid #A0A1A1",
+                  borderRadius: "0.5rem",
+                  color: "#EDEEEE"
+                }} 
+                formatter={(value) => [`$${formatVolume(value)}`, "Volume"]}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="volume" 
+                stroke="#2CD493" 
+                strokeWidth={2} 
                 dot={false}
+                activeDot={{ r: 4, fill: "#2CD493" }}
               />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* 🚦 Risk Indicator */}
-      <div>
-        <p className="text-gray-400 text-sm mb-1">Risk Indicator</p>
-        <div className="w-full bg-gray-700 rounded-full h-2">
-          <div
-            className="h-2 rounded-full bg-gradient-to-r from-green-400 via-emerald-500 to-teal-400"
-            style={{
-              width: `${Math.min(data.liquidity_score * 100, 100)}%`,
-            }}
-          ></div>
+      {/* 4. Risk Indicator */}
+      <div className="bg-surface rounded-xl p-6 flex justify-between items-center border border-border">
+        <div>
+          <p className="text-txt text-sm font-medium">Liquidity Risk Assessment</p>
+          <p className="text-muted text-xs mt-1">Based on 24h trading volume</p>
+        </div>
+        <div className="text-right">
+          <span className={`font-bold text-lg ${risk.color}`}>{risk.label} Liquidity</span>
+          <div className={`w-3 h-3 rounded-full mt-1 ml-auto ${risk.color.replace('text-', 'bg-')}`}></div>
+        </div>
+      </div>
+
+      {/* 5. Educational Tip */}
+      <div className="bg-surface2 rounded-xl p-6 border border-border">
+        <div className="flex items-start space-x-3">
+          <div className="text-accent-500 text-xl">💡</div>
+          <div>
+            <p className="text-txt font-medium">Why liquidity matters?</p>
+            <div className="text-muted text-sm mt-2 space-y-1">
+              <p>• <span className="text-green-400 font-medium">High liquidity</span> = stable prices + faster execution</p>
+              <p>• <span className="text-yellow-400 font-medium">Medium liquidity</span> = moderate price impact</p>
+              <p>• <span className="text-red-400 font-medium">Low liquidity</span> = higher risk of slippage</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
 

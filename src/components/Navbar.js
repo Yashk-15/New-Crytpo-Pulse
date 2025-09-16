@@ -105,7 +105,6 @@ export default function Navbar({ onSearch }) {
         <nav className="flex-1 flex items-center gap-2 justify-center">
           {[
             { label: "Discover", path: "/" },
-            { label: "Trending", path: "/trending" },
             { label: "Liquidity", path: "/Liquidity" },
             { label: "About", path: "/about" },
           ].map((item) => {

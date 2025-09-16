@@ -1,8 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   Tooltip,
@@ -13,8 +11,6 @@ import {
   AreaChart,
   RadialBarChart,
   RadialBar,
-  PieChart,
-  Pie,
   Cell,
 } from "recharts";
 

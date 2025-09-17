@@ -15,7 +15,15 @@ export default function WatchlistPage() {
       const results = await Promise.all(
         list.map(async (id) => {
           const res = await fetch(`/api/coingecko/${id}`);
-          return await res.json();
+          if (!res.ok) {
+            const text = await res.text().catch(() => "");
+            throw new Error(
+              `Failed to load watchlist coin ${id}: ${res.status} ${text}`
+            );
+          }
+          const coin = await res.json();
+
+          return coin;
         })
       );
 

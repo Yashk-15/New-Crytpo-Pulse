@@ -31,8 +31,12 @@ export default function MyPortfolio() {
       try {
         const ids = items.map((i) => i.coinId).join(',');
         const res = await fetch(
-          `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&per_page=250&page=1&sparkline=false`
+          `/api/coins/markets?vs_currency=usd&ids=${encodeURIComponent(ids)}&order=market_cap_desc&per_page=250&page=1&sparkline=false`
         );
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          throw new Error(`Failed to fetch portfolio prices: ${res.status} ${text}`);
+        }
         const data = await res.json();
         const map = {};
         data.forEach((coin) => {

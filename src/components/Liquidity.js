@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import React, { useState, useEffect } from 'react';
 import {
   XAxis,
   YAxis,
@@ -13,6 +13,85 @@ import {
   RadialBar,
   Cell,
 } from "recharts";
+import { FaChartLine, FaCoins } from "react-icons/fa";
+import { BiTrendingUp } from "react-icons/bi";
+
+// Mini Crypto Loader Component for Liquidity
+const LiquidityLoader = () => {
+    const [progress, setProgress] = useState(0);
+    const [loadingText, setLoadingText] = useState("Analyzing liquidity");
+
+    useEffect(() => {
+        // Animate loading text
+        const textInterval = setInterval(() => {
+            setLoadingText(prev => {
+                if (prev === "Analyzing liquidity...") return "Analyzing liquidity";
+                return prev + ".";
+            });
+        }, 400);
+
+        // Animate progress bar
+        const progressInterval = setInterval(() => {
+            setProgress(prev => {
+                if (prev >= 100) return 100;
+                return prev + 5; // Faster progress
+            });
+        }, 80);
+
+        return () => {
+            clearInterval(textInterval);
+            clearInterval(progressInterval);
+        };
+    }, []);
+
+    return (
+        <div className="bg-gradient-to-br from-surface2 to-surface2/80 rounded-2xl p-8 border border-border backdrop-blur relative overflow-hidden">
+            {/* Subtle animated background */}
+            <div className="absolute inset-0 opacity-5">
+                <div className="w-full h-full bg-[linear-gradient(rgba(44,212,147,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(44,212,147,0.1)_1px,transparent_1px)] bg-[size:40px_40px] animate-pulse"></div>
+            </div>
+
+            <div className="relative z-10 text-center max-w-md mx-auto">
+                {/* Floating Icons */}
+                <div className="relative mb-6">
+                    <div className="w-20 h-20 mx-auto relative">
+                        {/* Rotating icons */}
+                        <div className="absolute inset-0 animate-spin">
+                            <FaChartLine className="absolute top-0 left-1/2 transform -translate-x-1/2 text-2xl text-accent-500" />
+                            <BiTrendingUp className="absolute right-0 top-1/2 transform -translate-y-1/2 text-xl text-green-400" />
+                            <FaCoins className="absolute bottom-0 left-1/2 transform -translate-x-1/2 text-xl text-yellow-400" />
+                        </div>
+                        
+                        {/* Center pulse */}
+                        <div className="absolute inset-4 rounded-full border-2 border-accent-500/40 animate-ping"></div>
+                    </div>
+                </div>
+
+                {/* Loading Text */}
+                <h3 className="text-xl font-bold text-txt mb-2">Liquidity Analysis</h3>
+                <p className="text-muted text-sm mb-6">{loadingText}</p>
+
+                {/* Compact Progress Bar */}
+                <div className="w-full max-w-xs mx-auto mb-4">
+                    <div className="w-full bg-surface rounded-full h-2 overflow-hidden">
+                        <div 
+                            className="h-full bg-gradient-to-r from-accent-500 to-green-400 rounded-full transition-all duration-200 ease-out"
+                            style={{ width: `${progress}%` }}
+                        ></div>
+                    </div>
+                    <p className="text-xs text-muted mt-2">{progress}%</p>
+                </div>
+
+                {/* Quick status messages */}
+                <div className="text-xs text-muted space-y-1">
+                    {progress > 30 && <p>Loading market data...</p>}
+                    {progress > 60 && <p>Calculating metrics...</p>}
+                    {progress >= 100 && <p className="text-accent-500">Analysis complete! 📊</p>}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default function LiquidityCard({ coinId = "bitcoin" }) {
   const [coins, setCoins] = useState([]);
@@ -21,6 +100,7 @@ export default function LiquidityCard({ coinId = "bitcoin" }) {
   const [trendData, setTrendData] = useState([]);
   const [topCoins, setTopCoins] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -50,6 +130,11 @@ export default function LiquidityCard({ coinId = "bitcoin" }) {
       setError(null);
 
       try {
+        // Show loader only on initial load, not on coin changes
+        if (isInitialLoad) {
+          await new Promise(resolve => setTimeout(resolve, 2000)); // 2 seconds for initial load
+        }
+
         const res = await fetch(`/api/coins/liquidity?id=${selectedCoin}&days=1`);
         if (!res.ok) throw new Error(`Failed to fetch liquidity data: ${res.status}`);
         const json = await res.json();
@@ -72,6 +157,7 @@ export default function LiquidityCard({ coinId = "bitcoin" }) {
         setError(err.message || "Failed to load liquidity data");
       } finally {
         setLoading(false);
+        setIsInitialLoad(false);
       }
     };
 
@@ -85,12 +171,22 @@ export default function LiquidityCard({ coinId = "bitcoin" }) {
     return num.toFixed(0);
   };
 
-  if (loading) {
+  // Show loader only on initial load
+  if (loading && isInitialLoad) {
     return (
-      <div className="flex justify-center items-center h-64">
+      <div className="w-auto space-y-6 mt-4">
+        <LiquidityLoader />
+      </div>
+    );
+  }
+
+  // Show simple spinner for subsequent loads
+  if (loading && !isInitialLoad) {
+    return (
+      <div className="flex justify-center items-center h-32">
         <div className="relative">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-surface2"></div>
-          <div className="absolute top-0 animate-spin rounded-full h-16 w-16 border-4 border-accent-500 border-t-transparent"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-surface2"></div>
+          <div className="absolute top-0 animate-spin rounded-full h-8 w-8 border-2 border-accent-500 border-t-transparent"></div>
         </div>
       </div>
     );
@@ -107,23 +203,65 @@ export default function LiquidityCard({ coinId = "bitcoin" }) {
 
   if (!coin) return <p className="text-gray-400">Loading liquidity data...</p>;
 
-  const volume = coin.market_data.total_volume.usd;
-  let risk = { label: "High", color: "text-green-400", bgColor: "bg-green-400", value: 85 };
+  // safer access to volume (avoid runtime crash if coin or market_data missing)
+  const volume = coin?.market_data?.total_volume?.usd ?? 0;
+
+  // compute risk value and fixed tailwind classes
+  let risk = { label: "High", value: 85 };
   if (volume < 500_000_000) {
-    risk = { label: "Low", color: "text-red-400", bgColor: "bg-red-400", value: 25 };
-  } else if (volume < 5_000_000_000) {
-    risk = { label: "Medium", color: "text-yellow-400", bgColor: "bg-yellow-400", value: 55 };
+    risk = { label: "Low", value: 20 };
+  } else if (volume < 2_000_000_000) {
+    risk = { label: "Medium", value: 50 };
+  } else {
+    risk = { label: "High", value: 85 };
   }
 
-  // Prepare radial chart data for liquidity score
-  const liquidityScoreData = [{
-    name: 'Score',
-    value: coin.liquidity_score || 0,
-    fill: '#2CD493'
-  }];
+  const riskClassMap = {
+    Low: { bg: 'bg-red-400/10', text: 'text-red-400', border: 'border-red-400/30' },
+    Medium: { bg: 'bg-yellow-400/10', text: 'text-yellow-400', border: 'border-yellow-400/30' },
+    High: { bg: 'bg-green-400/10', text: 'text-green-400', border: 'border-green-400/30' },
+  };
+  const riskStyles = riskClassMap[risk.label] || riskClassMap.High;
+
+  // compute a fixed border class based on risk.label
+  const riskBorderClass =
+    risk.label === 'Low' ? 'border-red-400/30' : risk.label === 'Medium' ? 'border-yellow-400/30' : 'border-green-400/30';
+
+  // compute a fallback liquidity score when API doesn't provide one
+  const computeLiquidityScore = (c) => {
+    // safe access
+    const volume = c?.market_data?.total_volume?.usd ?? c?.total_volume ?? 0;
+    const marketCap = c?.market_data?.market_cap?.usd ?? c?.market_cap ?? 0;
+    if (!volume || !marketCap) return null;
+
+    const ratio = volume / marketCap;
+
+    // simple heuristic mapping ratio -> 0..100
+    if (ratio >= 0.5) return 95;
+    if (ratio >= 0.1) return 85;
+    if (ratio >= 0.02) return 65;
+    if (ratio >= 0.005) return 45;
+    if (ratio >= 0.001) return 25;
+    return 10;
+  };
+
+  // prefer server-provided liquidity_score, otherwise compute fallback
+  const liquidityScore = (coin?.liquidity_score ?? computeLiquidityScore(coin)) ?? null;
+
+  // Prepare radial chart data for liquidity score (use 0 when score is null to avoid chart crash)
+  const liquidityScoreData = [
+    {
+      name: 'Score',
+      value: liquidityScore ?? 0,
+      fill: '#2CD493',
+    },
+  ];
+
+  // friendly label for rendering
+  const liquidityScoreLabel = liquidityScore == null ? 'N/A' : `${liquidityScore}`;
 
   return (
-    <div className="w-auto space-y-6 mt-4">
+    <div className="w-auto space-y-6 mt-4 animate-fade-in">
       {/* Header Section with Dropdown */}
       <div className="bg-gradient-to-r from-surface2 via-surface2/95 to-surface2 rounded-2xl p-6 border border-border backdrop-blur relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-accent-500/5 rounded-full blur-3xl"></div>
@@ -262,8 +400,8 @@ export default function LiquidityCard({ coinId = "bitcoin" }) {
                 <p className="text-muted text-sm mt-1">Based on 24h trading volume analysis</p>
               </div>
               <div className="text-center">
-                <div className={`relative inline-flex items-center justify-center w-24 h-24 rounded-full ${risk.bgColor}/10 border-2 border-${risk.bgColor}/30`}>
-                  <span className={`font-bold text-lg ${risk.color}`}>{risk.label}</span>
+                <div className={`relative inline-flex items-center justify-center w-24 h-24 rounded-full ${riskStyles.bg} border ${riskStyles.border}`}>
+                  <span className={`font-bold text-lg ${riskStyles.text}`}>{risk.label}</span>
                 </div>
                 <div className="mt-3 flex items-center space-x-1">
                   {[1,2,3,4,5].map((i) => (
@@ -359,6 +497,16 @@ export default function LiquidityCard({ coinId = "bitcoin" }) {
           </p>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.6s ease-out;
+        }
+      `}</style>
     </div>
   );
 }

@@ -12,14 +12,11 @@ function CoinsTable() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(
-          '/api/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=20&page=1&sparkline=false'
-        );
-        
+        const res = await fetch('/api/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false');
         if (!res.ok) {
-          throw new Error(`Failed to fetch coins: ${res.status}`);
+          const t = await res.text().catch(() => '');
+          throw new Error(`Failed to load coins table: ${res.status} ${t}`);
         }
-        
         const data = await res.json();
         setCoins(data);
       } catch (error) {
@@ -87,9 +84,9 @@ function CoinsTable() {
                   ${coin.current_price.toLocaleString()}
                 </td>
                 <td className={`py-3 px-2 text-right font-medium ${
-                  coin.price_change_percentage_24h > 0 ? 'text-green-400' : 'text-red-400'
+                  (coin.price_change_percentage_24h ?? 0) > 0 ? 'text-green-400' : 'text-red-400'
                 }`}>
-                  {coin.price_change_percentage_24h > 0 ? '+' : ''}{coin.price_change_percentage_24h.toFixed(2)}%
+                  {( (Number(coin.price_change_percentage_24h) ?? 0) > 0 ? '+' : '' ) + (Number(coin.price_change_percentage_24h) ?? 0).toFixed(2)}%
                 </td>
                 <td className="py-3 px-2 text-right text-gray-300">
                   ${coin.market_cap.toLocaleString()}

@@ -40,67 +40,29 @@ function TopCoins() {
   };
 
   useEffect(() => {
+    let mounted = true;
     async function fetchCoins() {
-      if (!isOnline) {
-        setError('You are currently offline. Please check your internet connection.');
-        setLoading(false);
-        return;
-      }
-
       try {
         setLoading(true);
-        setError(null);
-        
-        const fetchData = async () => {
-          const res = await fetch(
-            '/api/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=3&page=1&sparkline=false',
-            {
-              method: 'GET',
-              headers: {
-                'Accept': 'application/json',
-              },
-              // Add timeout
-              signal: AbortSignal.timeout(10000) // 10 second timeout
-            }
-          );
-          
-          if (!res.ok) {
-            if (res.status === 429) {
-              throw new Error('Rate limit exceeded. Please try again later.');
-            } else if (res.status >= 500) {
-              throw new Error('Server error. Please try again later.');
-            } else {
-              throw new Error(`Failed to fetch coins: ${res.status}`);
-            }
-          }
-          
-          const data = await res.json();
-          if (!Array.isArray(data)) {
-            throw new Error('Invalid response format');
-          }
-          
-          setCoins(data);
-          setRetryCount(0); // Reset retry count on success
-        };
-
-        await retryWithBackoff(fetchData);
-      } catch (error) {
-        console.error('Error fetching coins:', error);
-        setRetryCount(prev => prev + 1);
-        
-        if (error.name === 'AbortError') {
-          setError('Request timed out. Please check your connection and try again.');
-        } else if (error.message.includes('Failed to fetch')) {
-          setError('Network error. Please check your internet connection.');
-        } else {
-          setError(error.message);
+        // request only 3 items from API
+        const res = await fetch('/api/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=3&page=1&sparkline=false');
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          throw new Error(`Failed to load top coins: ${res.status} ${text}`);
         }
+        const data = await res.json();
+        if (!mounted) return;
+        setCoins(data || []);
+        setError(null);
+      } catch (err) {
+        if (!mounted) return;
+        setError(err.message || 'Error fetching top coins');
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     }
-    
     fetchCoins();
+    return () => { mounted = false; };
   }, [isOnline]);
 
   const handleRetry = () => {
@@ -167,6 +129,9 @@ function TopCoins() {
     );
   }
 
+  // ensure rendering only top 3 even if API changes
+  const displayCoins = (coins || []).slice(0, 3);
+
   return (
     <div className="w-full flex mt-8 px-8">
   {/* Left Side - Top Coins + Portfolio */}
@@ -177,7 +142,7 @@ function TopCoins() {
 
         {/* Grid for compact square cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {coins.map((coin) => (
+          {displayCoins.map((coin) => (
             <div
               key={coin.id}
               className="bg-surface rounded-xl shadow flex flex-col items-center justify-center p-3 w-50 h-38 hover:shadow-lg hover:bg-surface2 transition-all duration-200 border border-border"
@@ -200,12 +165,10 @@ function TopCoins() {
               </p>
               <p
                 className={`text-[10px] font-medium ${
-                  coin.price_change_percentage_24h > 0
-                    ? 'text-green-400'
-                    : 'text-red-400'
+                  (coin.price_change_percentage_24h ?? 0) > 0 ? 'text-green-400' : 'text-red-400'
                 }`}
               >
-                {coin.price_change_percentage_24h.toFixed(2)}%
+                {(Number(coin.price_change_percentage_24h) ?? 0).toFixed(2)}%
               </p>
             </div>
           ))}

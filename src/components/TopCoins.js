@@ -136,7 +136,7 @@ function TopCoins() {
     <div className="w-full flex mt-8 px-8">
   {/* Left Side - Top Coins + Portfolio */}
   <div className="w-full md:w-1/3 md:sticky md:top-4 self-start">
-    <h2 className="text-xl font-black mb-4 text-txt border-l-4 border-accent-500 pl-3 -mt-2">
+    <h2 className="text-xl font-black mb-9 text-txt border-l-4 border-accent-500 pl-3 -mt-1">
       Top 3 Cryptocurrencies
     </h2>
 

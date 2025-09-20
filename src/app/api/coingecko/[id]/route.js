@@ -1,36 +1,34 @@
-// app/api/coins/[id]/route.js
 import { NextResponse } from "next/server";
 
 export async function GET(request, context) {
   try {
-    const { id } = await context.params;
+    const { id } = context.params;
     const { searchParams } = new URL(request.url);
 
     const days = searchParams.get("days");
-    const vs_currency = searchParams.get("vs_currency") || "usd"; // 👈 default to usd
+    const vs_currency = searchParams.get("vs_currency") || "usd";
 
-    // If a days param is provided, return market chart data which includes `prices`
     const endpoint = days
-      ? `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=${encodeURIComponent(
-          vs_currency
-        )}&days=${encodeURIComponent(days)}`
-      : `https://api.coingecko.com/api/v3/coins/${id}?vs_currency=${encodeURIComponent(
-          vs_currency
-        )}`;
+      ? `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=${encodeURIComponent(vs_currency)}&days=${encodeURIComponent(days)}`
+      : `https://api.coingecko.com/api/v3/coins/${id}?vs_currency=${encodeURIComponent(vs_currency)}`;
+
+    const headers = {
+      Accept: "application/json",
+      ...(process.env.COINGECKO_API_KEY && { "x-cg-demo-api-key": process.env.COINGECKO_API_KEY }),
+    };
 
     const res = await fetch(endpoint, {
-      headers: {
-        Accept: "application/json",
-        "x-cg-demo-api-key": process.env.COINGECKO_API_KEY, // ✅ API key from env
-      },
-      next: { revalidate: 60 }, // caching
+      headers,
+      next: { revalidate: 60 },
     });
 
     if (!res.ok) {
-      return NextResponse.json(
-        { error: `Failed to fetch data for ${id}` },
-        { status: res.status }
-      );
+      let errorMsg = `Failed to fetch data for ${id}`;
+      try {
+        const errorBody = await res.json();
+        if (errorBody.error) errorMsg += `: ${errorBody.error}`;
+      } catch {}
+      return NextResponse.json({ error: errorMsg }, { status: res.status });
     }
 
     const data = await res.json();

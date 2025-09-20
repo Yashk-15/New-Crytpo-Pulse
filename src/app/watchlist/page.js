@@ -184,7 +184,7 @@ export default function WatchlistPage() {
 
         const results = await Promise.all(
           list.map(async (id) => {
-            const res = await fetch(`/api/coingecko/${id}`);
+            const res = await fetch(`/api/coins/${id}`);
             if (!res.ok) {
               const text = await res.text().catch(() => "");
               throw new Error(

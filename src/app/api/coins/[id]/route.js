@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export async function GET(request, context) {
   try {
-    const { id } = context.params;
+    const { id } = await context.params;
     const { searchParams } = new URL(request.url);
 
     const days = searchParams.get("days");

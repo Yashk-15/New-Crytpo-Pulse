@@ -1,42 +1,238 @@
 "use client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 
+// Custom hook for debounced search with caching
+function useOptimizedSearch(searchTerm, delay = 300) {
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
+  // Cache for search results
+  const cache = useRef(new Map());
+  const abortController = useRef(null);
+
+  const debouncedSearch = useCallback(
+    async (term) => {
+      const trimmedTerm = term.trim();
+      
+      if (!trimmedTerm) {
+        setResults([]);
+        setLoading(false);
+        return;
+      }
+
+      // Check cache first
+      if (cache.current.has(trimmedTerm)) {
+        setResults(cache.current.get(trimmedTerm));
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      // Cancel previous request
+      if (abortController.current) {
+        abortController.current.abort();
+      }
+
+      abortController.current = new AbortController();
+
+      try {
+        const response = await fetch(`/api/search?query=${encodeURIComponent(trimmedTerm)}`, {
+          signal: abortController.current.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Search failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const searchResults = data.coins || [];
+        
+        // Limit results to top 10 for performance
+        const limitedResults = searchResults.slice(0, 10);
+        
+        // Cache the results
+        cache.current.set(trimmedTerm, limitedResults);
+        
+        // Clean cache if it gets too large (keep last 50 searches)
+        if (cache.current.size > 50) {
+          const firstKey = cache.current.keys().next().value;
+          cache.current.delete(firstKey);
+        }
+
+        setResults(limitedResults);
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          setError(err.message);
+          setResults([]);
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      debouncedSearch(searchTerm);
+    }, delay);
+
+    return () => {
+      clearTimeout(timer);
+      if (abortController.current) {
+        abortController.current.abort();
+      }
+    };
+  }, [searchTerm, delay, debouncedSearch]);
+
+  return { results, loading, error };
+}
+
+// Virtualized dropdown component for better performance with large lists
+function SearchDropdown({ 
+  results, 
+  loading, 
+  error, 
+  onSelect, 
+  highlightedIndex, 
+  itemRefs 
+}) {
+  if (loading) {
+    return (
+      <div className="absolute left-0 mt-2 w-full bg-gray-800 rounded-lg shadow-lg border border-gray-700 z-30 p-4">
+        <div className="flex items-center justify-center space-x-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-400"></div>
+          <span className="text-gray-300 text-sm">Searching...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="absolute left-0 mt-2 w-full bg-gray-800 rounded-lg shadow-lg border border-red-500 z-30 p-4">
+        <div className="text-red-400 text-sm text-center">
+          Search failed. Please try again.
+        </div>
+      </div>
+    );
+  }
+
+  if (results.length === 0) {
+    return null;
+  }
+
+  return (
+    <ul className="absolute left-0 mt-2 w-full bg-gray-800 rounded-lg shadow-lg border border-gray-700 max-h-60 overflow-y-auto z-30">
+      {results.map((coin, index) => (
+        <li
+          key={coin.id}
+          ref={(el) => (itemRefs.current[index] = el)}
+          onClick={() => onSelect(coin)}
+          className={`px-3 py-2 text-sm flex items-center gap-2 cursor-pointer transition-colors ${
+            index === highlightedIndex
+              ? "bg-green-600 text-white"
+              : "text-gray-200 hover:bg-gray-700"
+          }`}
+        >
+          <div className="relative w-5 h-5 flex-shrink-0">
+            <Image
+              src={coin.thumb}
+              alt={coin.name}
+              fill
+              sizes="20px"
+              className="rounded-full object-cover"
+              loading="lazy"
+            />
+          </div>
+          <div className="truncate">
+            <span className="font-medium">{coin.name}</span>
+            <span className="text-gray-400 ml-1">({coin.symbol.toUpperCase()})</span>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function Navbar({ onSearch }) {
   const router = useRouter();
   const pathname = usePathname();
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  
+  const itemRefs = useRef([]);
+  const searchInputRef = useRef(null);
 
-  const itemRefs = useRef([]); // refs for dropdown items
+  // Use optimized search hook
+  const { results: searchResults, loading, error } = useOptimizedSearch(searchTerm);
 
-  useEffect(() => {
-    const fetchSearchResults = async () => {
-      if (searchTerm.trim().length === 0) {
-        setSearchResults([]);
-        return;
-      }
+  // Memoize navigation items to prevent re-renders
+  const navigationItems = useMemo(() => [
+    { label: "Discover", path: "/" },
+    { label: "Liquidity", path: "/Liquidity" },
+    { label: "About", path: "/about" },
+  ], []);
 
-      try {
-        const res = await fetch(`/api/search?query=${searchTerm}`);
+  // Handle search input changes
+  const handleSearchChange = useCallback((e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    setHighlightedIndex(-1);
+    setIsDropdownOpen(value.trim().length > 0);
+    onSearch?.(value);
+  }, [onSearch]);
 
-        const data = await res.json();
-        setSearchResults(data.coins || []);
-        setHighlightedIndex(-1); // reset highlight
-      } catch (err) {
-        console.error("Search failed:", err);
-      }
-    };
+  // Optimized coin selection with faster navigation
+  const handleSelectCoin = useCallback((coin) => {
+    setSearchTerm(coin.name);
+    setIsDropdownOpen(false);
+    setHighlightedIndex(-1);
+    onSearch?.(coin.id);
+    
+    // Use replace for faster navigation and better UX
+    router.replace(`/coingecko/${coin.id}`);
+  }, [router, onSearch]);
 
-    const debounce = setTimeout(fetchSearchResults, 400);
-    return () => clearTimeout(debounce);
-  }, [searchTerm]);
+  // Keyboard navigation
+  const handleKeyDown = useCallback((e) => {
+    if (!isDropdownOpen || searchResults.length === 0) return;
 
-  // Scroll highlighted item into view
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setHighlightedIndex((prev) =>
+          prev < searchResults.length - 1 ? prev + 1 : 0
+        );
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setHighlightedIndex((prev) =>
+          prev > 0 ? prev - 1 : searchResults.length - 1
+        );
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (highlightedIndex >= 0 && searchResults[highlightedIndex]) {
+          handleSelectCoin(searchResults[highlightedIndex]);
+        }
+        break;
+      case "Escape":
+        setIsDropdownOpen(false);
+        setHighlightedIndex(-1);
+        searchInputRef.current?.blur();
+        break;
+    }
+  }, [isDropdownOpen, searchResults, highlightedIndex, handleSelectCoin]);
+
+  // Auto-scroll highlighted item into view
   useEffect(() => {
     if (
       highlightedIndex >= 0 &&
@@ -49,38 +245,20 @@ export default function Navbar({ onSearch }) {
     }
   }, [highlightedIndex]);
 
-  const handleSelectCoin = (coingecko) => {
-    setSearchTerm(coingecko.name); // fill input with coin name
-    setSearchResults([]); // close dropdown
-    setHighlightedIndex(-1);
-    onSearch?.(coingecko.id); // send coin id to parent
-    // Navigate to coin details page
-    router.push(`/coingecko/${coingecko.id}`);
-  };
-
-  const handleKeyDown = (e) => {
-    if (searchResults.length === 0) return;
-
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setHighlightedIndex((prev) =>
-        prev < searchResults.length - 1 ? prev + 1 : 0
-      );
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setHighlightedIndex((prev) =>
-        prev > 0 ? prev - 1 : searchResults.length - 1
-      );
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      if (highlightedIndex >= 0) {
-        handleSelectCoin(searchResults[highlightedIndex]);
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchInputRef.current && !searchInputRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+        setHighlightedIndex(-1);
       }
-    } else if (e.key === "Escape") {
-      setSearchResults([]);
-      setHighlightedIndex(-1);
-    }
-  };
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   return (
     <header className="sticky top-0 z-20 bg-bg/80 backdrop-blur border-b border-border">
@@ -94,6 +272,7 @@ export default function Navbar({ onSearch }) {
               width={90}
               height={90}
               className="w-full h-full object-contain"
+              priority
             />
           </div>
           <span className="text-white font-bold text-xl">
@@ -103,17 +282,13 @@ export default function Navbar({ onSearch }) {
 
         {/* Navigation */}
         <nav className="flex-1 flex items-center gap-2 justify-center">
-          {[
-            { label: "Discover", path: "/" },
-            { label: "Liquidity", path: "/Liquidity" },
-            { label: "About", path: "/about" },
-          ].map((item) => {
+          {navigationItems.map((item) => {
             const isActive = pathname === item.path;
             return (
-              <Link key={item.label} href={item.path}>
+              <Link key={item.label} href={item.path} prefetch={true}>
                 <button
                   className={`px-3 py-1 rounded-full text-sm transition-colors
-            ${isActive
+                    ${isActive
                       ? "bg-green-500 text-black font-semibold"
                       : "text-gray-300 hover:text-white hover:bg-surface2"
                     }`}
@@ -125,24 +300,29 @@ export default function Navbar({ onSearch }) {
           })}
         </nav>
 
-
-
         {/* Search + Actions */}
         <div className="flex items-center gap-3">
-          {/* Search box */}
-          <div className="relative">
+          {/* Enhanced search box */}
+          <div className="relative" ref={searchInputRef}>
             <input
+              ref={searchInputRef}
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                onSearch?.(e.target.value);
-              }}
+              onChange={handleSearchChange}
               onKeyDown={handleKeyDown}
-              placeholder="Search coin"
+              onFocus={() => {
+                if (searchTerm.trim() && searchResults.length > 0) {
+                  setIsDropdownOpen(true);
+                }
+              }}
+              placeholder="Search coin..."
+              autoComplete="off"
+              spellCheck="false"
               className="bg-gray-700 text-gray-200 px-3 py-2 pl-9 rounded-full text-sm 
                  border border-gray-600 focus:outline-none focus:ring-2 
-                 focus:ring-green-400 placeholder-gray-400"
+                 focus:ring-green-400 placeholder-gray-400 transition-all
+                 w-48 focus:w-56"
             />
+            
             {/* Search icon */}
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -159,38 +339,44 @@ export default function Navbar({ onSearch }) {
               />
             </svg>
 
-            {/* Dropdown with results */}
-            {searchResults.length > 0 && (
-              <ul className="absolute left-0 mt-2 w-full bg-gray-800 rounded-lg shadow-lg border border-gray-700 max-h-60 overflow-y-auto z-30">
-                {searchResults.map((coin, index) => (
-                  <li
-                    key={coin.id}
-                    ref={(el) => (itemRefs.current[index] = el)}
-                    onClick={() => handleSelectCoin(coin)}
-                    className={`px-3 py-2 text-sm flex items-center gap-2 cursor-pointer ${index === highlightedIndex
-                        ? "bg-green-600 text-white"
-                        : "text-gray-200 hover:bg-gray-700"
-                      }`}
-                  >
-                    <Image
-                      src={coin.thumb}
-                      alt={coin.name}
-                      width={20}
-                      height={20}
-                      className="w-5 h-5 rounded-full"
-                    />
-                    {coin.name} ({coin.symbol.toUpperCase()})
-                  </li>
-                ))}
-              </ul>
+            {/* Clear button */}
+            {searchTerm && (
+              <button
+                onClick={() => {
+                  setSearchTerm("");
+                  setIsDropdownOpen(false);
+                  searchInputRef.current?.focus();
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            )}
+
+            {/* Optimized dropdown */}
+            {isDropdownOpen && (
+              <SearchDropdown
+                results={searchResults}
+                loading={loading}
+                error={error}
+                onSelect={handleSelectCoin}
+                highlightedIndex={highlightedIndex}
+                itemRefs={itemRefs}
+              />
             )}
           </div>
 
-          <Link href="/watchlist">
+          <Link href="/watchlist" prefetch={true}>
             <button
-              className="px-4 py-2 rounded-full text-sm font-medium transition
-    bg-gradient-to-r from-lime-700 via-lime-700 to-lime-700
-    text-white shadow-md hover:shadow-lg"
+              className="px-4 py-2 rounded-full text-sm font-medium transition-all
+                bg-gradient-to-r from-lime-700 via-lime-700 to-lime-700
+                text-white shadow-md hover:shadow-lg hover:scale-105"
             >
               Watchlist
             </button>

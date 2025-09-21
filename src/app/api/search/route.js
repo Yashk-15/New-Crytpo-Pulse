@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 
-// In-memory cache for search results
+// In-memory cache for speedy search results
+
 const cache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const MAX_CACHE_SIZE = 100;
 
-// Clean up expired cache entries
+// Cleaning up expired cache entries :-
+
 function cleanupCache() {
   const now = Date.now();
   for (const [key, { timestamp }] of cache.entries()) {
@@ -15,7 +17,8 @@ function cleanupCache() {
   }
 }
 
-// Get cached result or null if expired/missing
+// Get cached result or null if finds search cache is expired/missing :-
+
 function getCachedResult(query) {
   const cached = cache.get(query);
   if (!cached) return null;
@@ -33,12 +36,10 @@ function getCachedResult(query) {
 function setCachedResult(query, data) {
   // Clean up if cache is getting too large
   if (cache.size >= MAX_CACHE_SIZE) {
-    // Remove oldest entries (simple LRU)
-    const entries = Array.from(cache.entries());
+    const entries = Array.from(cache.entries());                      // Remove oldest entries
     entries.sort(([,a], [,b]) => a.timestamp - b.timestamp);
     
-    // Remove oldest 20% of entries
-    const toRemove = Math.floor(MAX_CACHE_SIZE * 0.2);
+    const toRemove = Math.floor(MAX_CACHE_SIZE * 0.2);              // Remove 20% of oldest entries
     for (let i = 0; i < toRemove; i++) {
       cache.delete(entries[i][0]);
     }
@@ -55,8 +56,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("query");
 
-    // Validate and sanitize input
-    if (!query || typeof query !== 'string') {
+    if (!query || typeof query !== 'string') {    // Validate and sanitize input
       return NextResponse.json({ coins: [] });
     }
 
@@ -65,16 +65,14 @@ export async function GET(request) {
       return NextResponse.json({ coins: [] });
     }
 
-    // Limit query length to prevent abuse
-    if (trimmedQuery.length > 50) {
+    if (trimmedQuery.length > 50) {                // Limit query length to prevent abuse
       return NextResponse.json(
         { error: "Query too long" },
         { status: 400 }
       );
     }
 
-    // Check cache first
-    const cacheKey = trimmedQuery.toLowerCase();
+    const cacheKey = trimmedQuery.toLowerCase();   // Check cache first
     const cachedResult = getCachedResult(cacheKey);
     
     if (cachedResult) {
@@ -106,7 +104,6 @@ export async function GET(request) {
             }),
           },
           signal: controller.signal,
-          // Add request timeout and cache control
           next: { revalidate: 300 }, // 5 minutes Next.js cache
         }
       );
@@ -114,8 +111,7 @@ export async function GET(request) {
       clearTimeout(timeoutId);
 
       if (!res.ok) {
-        // Handle rate limiting gracefully
-        if (res.status === 429) {
+        if (res.status === 429) {                                  // Handle rate limiting gracefully
           return NextResponse.json(
             { error: "Too many requests. Please try again later." },
             { status: 429 }
@@ -126,11 +122,9 @@ export async function GET(request) {
       }
 
       const data = await res.json();
-      
-      // Process and optimize the response
       const processedData = {
         coins: (data.coins || [])
-          .slice(0, 10) // Limit to top 10 results for better performance
+          .slice(0, 10) // Limiting to top 10 results for better performance
           .map(coin => ({
             id: coin.id,
             name: coin.name,
@@ -139,8 +133,7 @@ export async function GET(request) {
             market_cap_rank: coin.market_cap_rank
           }))
           .sort((a, b) => {
-            // Prioritize exact matches and higher market cap rank
-            const aExact = a.name.toLowerCase() === trimmedQuery.toLowerCase() ? 1000 : 0;
+            const aExact = a.name.toLowerCase() === trimmedQuery.toLowerCase() ? 1000 : 0;  // Prioritize exact matches and higher market cap rank
             const bExact = b.name.toLowerCase() === trimmedQuery.toLowerCase() ? 1000 : 0;
             const aRank = a.market_cap_rank || 9999;
             const bRank = b.market_cap_rank || 9999;
@@ -149,7 +142,6 @@ export async function GET(request) {
           })
       };
 
-      // Cache the result
       setCachedResult(cacheKey, processedData);
 
       return NextResponse.json(processedData, {
@@ -183,9 +175,4 @@ export async function GET(request) {
       { status: 500 }
     );
   }
-}
-
-// Optional: Add a cleanup function that can be called periodically
-export function cleanup() {
-  cleanupCache();
 }

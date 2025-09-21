@@ -17,21 +17,20 @@ import {
 import { BiTrendingUp } from "react-icons/bi";
 import { SiDogecoin, SiLitecoin } from "react-icons/si";
 
-// Crypto Loader Component
+// Crypto Loader :-
+
 const CryptoLoader = () => {
     const [loadingText, setLoadingText] = useState("Loading");
     const [progress, setProgress] = useState(0);
 
     useEffect(() => {
-        // Animate loading text
-        const textInterval = setInterval(() => {
+        const textInterval = setInterval(() => {   // loading text
             setLoadingText(prev => {
                 if (prev === "Loading...") return "Loading";
                 return prev + ".";
             });
         }, 500);
-
-        // Animate progress bar
+        // progress bar
         const progressInterval = setInterval(() => {
             setProgress(prev => {
                 if (prev >= 100) return 100;
@@ -138,10 +137,9 @@ export default function AboutSection() {
     const [activeCard, setActiveCard] = useState(null);
 
     useEffect(() => {
-        // Simulate loading time
         const timer = setTimeout(() => {
             setIsLoading(false);
-        }, 4000); // 4 seconds loading
+        }, 4000); // 4 seconds
 
         return () => clearTimeout(timer);
     }, []);
@@ -211,9 +209,9 @@ export default function AboutSection() {
 
     return (
         <div className="relative min-h-screen bg-gradient-to-br from-black via-gray-900 to-green-950 text-white font-sans overflow-hidden">
-            {/* Content with fade-in animation */}
+            {/* implemented fade-in animation */}
             <div className="animate-fade-in">
-                {/* Home Button (Top Right) */}
+                {/* Home Button (Top right*/}
                 <div className="absolute top-6 right-6 z-20">
                     <a
                         href="/"
@@ -235,7 +233,7 @@ export default function AboutSection() {
                     </p>
                 </div>
 
-                {/* Features + Developer Layout */}
+                {/* Features & Developer Layout */}
                 <div className="relative z-10 container mx-auto px-4 sm:px-6 pb-16">
                     <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
                         {/* Features (left, span 3 columns on xl screens) */}
@@ -317,7 +315,7 @@ export default function AboutSection() {
                             </div>
                         </div>
 
-                        {/* Developer Card (right, sticky & bigger than feature cards) */}
+                        {/* Developer Card */}
                         <div className="xl:col-span-1 flex justify-center xl:justify-end">
                             <div className="w-full max-w-sm">
                                 <div className="sticky top-28 p-8 sm:p-10 bg-black/50 backdrop-blur-xl rounded-3xl border border-green-500/30 hover:scale-105 transition-all duration-500 shadow-xl shadow-green-900/40 hover:shadow-green-500/30 text-center"

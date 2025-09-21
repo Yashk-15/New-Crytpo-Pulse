@@ -4,7 +4,7 @@ import { Star, Home, TrendingUp, AlertTriangle, Search, Trash2, ExternalLink } f
 import Link from "next/link";
 import { getWatchlist, removeFromWatchlist } from "../../utils/watchlist";
 
-// Watchlist Loader Component
+// Watchlist Loader :-
 const WatchlistLoader = () => {
   const [loadingText, setLoadingText] = useState("Loading watchlist");
   const [progress, setProgress] = useState(0);
@@ -17,16 +17,14 @@ const WatchlistLoader = () => {
   useEffect(() => {
     if (!isMounted) return;
 
-    // Animate loading text
-    const textInterval = setInterval(() => {
+    const textInterval = setInterval(() => {                      // loading text
       setLoadingText(prev => {
         if (prev === "Loading watchlist...") return "Loading watchlist";
         return prev + ".";
       });
     }, 500);
 
-    // Animate progress bar
-    const progressInterval = setInterval(() => {
+    const progressInterval = setInterval(() => {              // progress bar
       setProgress(prev => {
         if (prev >= 100) return 100;
         return prev + 3;
@@ -142,7 +140,8 @@ const WatchlistLoader = () => {
   );
 };
 
-// Skeleton loader for individual coin cards
+// Skeleton loader for individual coin cards :-
+
 const CoinCardSkeleton = () => (
   <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700 animate-pulse">
     <div className="flex items-center gap-4">
@@ -156,7 +155,8 @@ const CoinCardSkeleton = () => (
   </div>
 );
 
-// Remove confirmation modal
+// Remove confirmation modal :-
+
 const RemoveConfirmModal = ({ isOpen, onClose, onConfirm, coinName, coinSymbol, coinImage }) => {
   if (!isOpen) return null;
 
@@ -210,7 +210,6 @@ export default function WatchlistPage() {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [removeModal, setRemoveModal] = useState({ isOpen: false, coin: null });
 
-  // Fetch coin data from CoinGecko API
   const fetchCoinData = async (coinIds) => {
     if (!coinIds.length) return [];
     
@@ -236,8 +235,7 @@ export default function WatchlistPage() {
       
       const watchlistIds = getWatchlist();
       
-      // Show initial loader for better UX
-      if (isInitialLoad) {
+      if (isInitialLoad) {           // initial loader
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
       
@@ -245,8 +243,6 @@ export default function WatchlistPage() {
         setCoins([]);
         return;
       }
-
-      // Fetch real coin data from API
       const coinData = await fetchCoinData(watchlistIds);
       setCoins(coinData);
 
@@ -261,9 +257,7 @@ export default function WatchlistPage() {
 
   useEffect(() => {
     fetchData();
-
-    // Listen for watchlist updates from other components
-    const handleWatchlistUpdate = () => {
+    const handleWatchlistUpdate = () => {                // check for watchlist updates from other components
       fetchData();
     };
 
@@ -298,7 +292,6 @@ export default function WatchlistPage() {
     setRemoveModal({ isOpen: false, coin: null });
   };
 
-  // Show full-screen loader only on initial load
   if (loading && isInitialLoad) {
     return <WatchlistLoader />;
   }
@@ -369,6 +362,7 @@ export default function WatchlistPage() {
             </button>
           </div>
         ) : loading ? (
+
           // Skeleton loader for coin cards
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, index) => (
@@ -396,6 +390,7 @@ export default function WatchlistPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
             {coins.map((coin) => (
               <div key={coin.id} className="group bg-gradient-to-br from-gray-800 to-gray-800/80 p-6 rounded-2xl border border-gray-700 hover:border-green-500/50 transition-all duration-300 backdrop-blur-xl relative overflow-hidden">
+                
                 {/* Subtle background gradient */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full blur-2xl group-hover:bg-green-500/10 transition-all"></div>
                 
@@ -473,6 +468,7 @@ export default function WatchlistPage() {
       </div>
 
       {/* Remove Confirmation Modal */}
+      
       <RemoveConfirmModal
         isOpen={removeModal.isOpen}
         onClose={() => setRemoveModal({ isOpen: false, coin: null })}

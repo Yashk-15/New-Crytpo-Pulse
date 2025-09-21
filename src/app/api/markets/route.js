@@ -16,7 +16,7 @@ export async function GET(request) {
         Accept: "application/json",
         "x-cg-demo-api-key": process.env.COINGECKO_API_KEY,
       },
-      next: { revalidate: 60 }, // cache for 1 minute
+      next: { revalidate: 60 }, // to ensure caching is for 1 minute
     });
 
     if (!res.ok) {

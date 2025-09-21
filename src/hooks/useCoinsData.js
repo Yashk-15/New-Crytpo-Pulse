@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-/**
- * Custom hook for fetching coin data with caching and error handling
- */
+// Custom hook for fetching coin data with caching and error handling :-
+
 export const useCoinData = (coinId, options = {}) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -83,9 +82,7 @@ export const useCoinData = (coinId, options = {}) => {
   return { data, loading, error, refetch: fetchData };
 };
 
-/**
- * Hook for fetching multiple coins data
- */
+// Hook for fetching multiple coins data :-
 export const useCoinsData = (coinIds = [], options = {}) => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);

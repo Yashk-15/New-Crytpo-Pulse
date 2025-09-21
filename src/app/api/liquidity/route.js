@@ -13,7 +13,8 @@ export async function GET(request) {
       );
     }
 
-    // Fetch coin details
+    // Fetching coin details :-
+
     const coinRes = await fetch(
       `https://api.coingecko.com/api/v3/coins/${coinId}`,
       {
@@ -34,7 +35,8 @@ export async function GET(request) {
 
     const coinData = await coinRes.json();
 
-    // Fetch market chart data for trend
+    // Fetching market chart data for trend :-
+
     const chartRes = await fetch(
       `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=${days}`,
       {
@@ -51,7 +53,8 @@ export async function GET(request) {
       chartData = await chartRes.json();
     }
 
-    // Fetch top coins by volume
+    // Fetching top coins by volume :-
+    
     const topCoinsRes = await fetch(
       "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=volume_desc&per_page=5&page=1",
       {

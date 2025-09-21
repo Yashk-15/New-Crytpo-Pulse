@@ -221,8 +221,6 @@ export default function CoinDetailsPage() {
             </div>
           </div>
         </div>
-
-        
       </div>
     </CoinPageLayout>
   );

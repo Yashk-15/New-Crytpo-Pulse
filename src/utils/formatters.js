@@ -1,6 +1,4 @@
-/**
- * Format price with proper currency and decimal places
- */
+// Format price with proper currency and decimal places :-
 export const formatPrice = (price, currency = 'USD') => {
   if (price === null || price === undefined || isNaN(price)) return '--';
   
@@ -12,9 +10,7 @@ export const formatPrice = (price, currency = 'USD') => {
   }).format(price);
 };
 
-/**
- * Format large numbers with K, M, B suffixes
- */
+// Format large numbers with K, M, B suffixes :-
 export const formatVolume = (volume) => {
   if (volume === null || volume === undefined || isNaN(volume)) return '--';
   
@@ -32,9 +28,7 @@ export const formatVolume = (volume) => {
   return volume.toFixed(0);
 };
 
-/**
- * Format percentage with proper color coding
- */
+// Format percentage with proper color coding :-
 export const formatPercentage = (percentage, includeSign = true) => {
   if (percentage === null || percentage === undefined || isNaN(percentage)) return '--';
   
@@ -42,17 +36,13 @@ export const formatPercentage = (percentage, includeSign = true) => {
   return `${sign}${Number(percentage).toFixed(2)}%`;
 };
 
-/**
- * Format market cap rank
- */
+// Format market cap rank :-
 export const formatRank = (rank) => {
   if (!rank) return 'N/A';
   return `#${rank}`;
 };
 
-/**
- * Format timestamp for charts
- */
+// Format timestamp for charts :-
 export const formatChartTimestamp = (timestamp, timeRange) => {
   const dateObj = new Date(timestamp);
   
@@ -76,18 +66,14 @@ export const formatChartTimestamp = (timestamp, timeRange) => {
   }
 };
 
-/**
- * Get color based on percentage change
- */
+// Get color based on percentage change
 export const getChangeColor = (change) => {
   if (change > 0) return 'text-green-400';
   if (change < 0) return 'text-red-400';
   return 'text-gray-400';
 };
 
-/**
- * Truncate text with ellipsis
- */
+// Truncate text with ellipsis
 export const truncateText = (text, maxLength = 50) => {
   if (!text || text.length <= maxLength) return text;
   return text.substring(0, maxLength) + '...';

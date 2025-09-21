@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 
 export async function GET(request, { params }) {
   try {
-    // ✅ FIX: Await the params in Next.js 15+
     const { id } = await params;
     const { searchParams } = new URL(request.url);
 

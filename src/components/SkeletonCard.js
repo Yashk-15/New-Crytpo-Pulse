@@ -1,6 +1,5 @@
-/**
- * Generic skeleton card component
- */
+// Generic skeleton card component :-
+
 export const SkeletonCard = ({ className = "" }) => (
   <div className={`animate-pulse bg-surface2 rounded-xl p-4 border border-border ${className}`}>
     <div className="flex items-center space-x-4">
@@ -13,9 +12,8 @@ export const SkeletonCard = ({ className = "" }) => (
   </div>
 );
 
-/**
- * Skeleton for coin table rows
- */
+// Skeleton for coin table rows :-
+
 export const SkeletonTableRow = () => (
   <tr className="border-b border-gray-700">
     <td className="py-3 px-2">
@@ -42,9 +40,7 @@ export const SkeletonTableRow = () => (
   </tr>
 );
 
-/**
- * Skeleton for top coins grid
- */
+// Skeleton for top coins grid :-
 export const SkeletonTopCoin = () => (
   <div className="bg-surface rounded-xl shadow p-3 w-50 h-38 border border-border animate-pulse">
     <div className="flex flex-col items-center justify-center space-y-2">
@@ -57,9 +53,7 @@ export const SkeletonTopCoin = () => (
   </div>
 );
 
-/**
- * Skeleton for chart component
- */
+// Skeleton for chart component :-
 export const SkeletonChart = ({ height = 300 }) => (
   <div className="bg-gray-800 text-white p-6 rounded-2xl shadow-lg">
     <div className="flex items-center justify-between mb-6">
@@ -88,9 +82,7 @@ export const SkeletonChart = ({ height = 300 }) => (
   </div>
 );
 
-/**
- * Skeleton for portfolio items
- */
+// Skeleton for portfolio items :-
 export const SkeletonPortfolioItem = () => (
   <div className="flex items-center justify-between bg-gray-700/50 rounded-xl px-3 py-2 animate-pulse">
     <div className="flex items-center gap-2">
@@ -107,9 +99,7 @@ export const SkeletonPortfolioItem = () => (
   </div>
 );
 
-/**
- * Skeleton for liquidity metrics
- */
+// Skeleton for liquidity metrics :-
 export const SkeletonLiquidityCard = () => (
   <div className="bg-surface2 rounded-2xl p-6 border border-border animate-pulse">
     <div className="space-y-4">

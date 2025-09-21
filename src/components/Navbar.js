@@ -4,13 +4,15 @@ import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 
-// Custom hook for debounced search with caching
+// Custom hook for debounced search with caching :-
+
 function useOptimizedSearch(searchTerm, delay = 300) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
-  // Cache for search results
+  // Cache for search results :-
+
   const cache = useRef(new Map());
   const abortController = useRef(null);
 
@@ -24,7 +26,7 @@ function useOptimizedSearch(searchTerm, delay = 300) {
         return;
       }
 
-      // Check cache first
+      // Checking cache first :-
       if (cache.current.has(trimmedTerm)) {
         setResults(cache.current.get(trimmedTerm));
         setLoading(false);
@@ -34,7 +36,6 @@ function useOptimizedSearch(searchTerm, delay = 300) {
       setLoading(true);
       setError(null);
 
-      // Cancel previous request
       if (abortController.current) {
         abortController.current.abort();
       }
@@ -51,15 +52,12 @@ function useOptimizedSearch(searchTerm, delay = 300) {
         }
 
         const data = await response.json();
-        const searchResults = data.coins || [];
-        
-        // Limit results to top 10 for performance
-        const limitedResults = searchResults.slice(0, 10);
+        const limitedResults = (data.coins || []).slice(0, 10);  //only 10 coins
         
         // Cache the results
         cache.current.set(trimmedTerm, limitedResults);
         
-        // Clean cache if it gets too large (keep last 50 searches)
+        // Clean cache if it gets too large :-
         if (cache.current.size > 50) {
           const firstKey = cache.current.keys().next().value;
           cache.current.delete(firstKey);
@@ -94,7 +92,7 @@ function useOptimizedSearch(searchTerm, delay = 300) {
   return { results, loading, error };
 }
 
-// Virtualized dropdown component for better performance with large lists
+// virtual dropdown component for better performance with large lists :-
 function SearchDropdown({ 
   results, 
   loading, 
@@ -171,7 +169,7 @@ export default function Navbar({ onSearch }) {
   const itemRefs = useRef([]);
   const searchInputRef = useRef(null);
 
-  // Use optimized search hook
+  // Using optimized search hook :-
   const { results: searchResults, loading, error } = useOptimizedSearch(searchTerm);
 
   // Memoize navigation items to prevent re-renders
@@ -201,7 +199,7 @@ export default function Navbar({ onSearch }) {
     router.replace(`/coingecko/${coin.id}`);
   }, [router, onSearch]);
 
-  // Keyboard navigation
+  // Keyboard navigation :-
   const handleKeyDown = useCallback((e) => {
     if (!isDropdownOpen || searchResults.length === 0) return;
 
@@ -232,7 +230,7 @@ export default function Navbar({ onSearch }) {
     }
   }, [isDropdownOpen, searchResults, highlightedIndex, handleSelectCoin]);
 
-  // Auto-scroll highlighted item into view
+  // Auto-scroll highlighted :-
   useEffect(() => {
     if (
       highlightedIndex >= 0 &&
@@ -245,7 +243,7 @@ export default function Navbar({ onSearch }) {
     }
   }, [highlightedIndex]);
 
-  // Close dropdown when clicking outside
+  // Close dropdown when clicking outside :-
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchInputRef.current && !searchInputRef.current.contains(event.target)) {
@@ -303,17 +301,12 @@ export default function Navbar({ onSearch }) {
         {/* Search + Actions */}
         <div className="flex items-center gap-3">
           {/* Enhanced search box */}
-          <div className="relative" ref={searchInputRef}>
+          <div className="relative">
             <input
               ref={searchInputRef}
               value={searchTerm}
               onChange={handleSearchChange}
               onKeyDown={handleKeyDown}
-              onFocus={() => {
-                if (searchTerm.trim() && searchResults.length > 0) {
-                  setIsDropdownOpen(true);
-                }
-              }}
               placeholder="Search coin..."
               autoComplete="off"
               spellCheck="false"
@@ -359,7 +352,7 @@ export default function Navbar({ onSearch }) {
               </button>
             )}
 
-            {/* Optimized dropdown */}
+            {/* dropdown */}
             {isDropdownOpen && (
               <SearchDropdown
                 results={searchResults}

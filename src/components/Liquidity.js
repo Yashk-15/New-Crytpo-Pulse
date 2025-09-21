@@ -16,13 +16,13 @@ import {
 import { FaChartLine, FaCoins } from "react-icons/fa";
 import { BiTrendingUp } from "react-icons/bi";
 
-// Mini Crypto Loader Component for Liquidity
+// Loader for Liquidity :-
+
 const LiquidityLoader = () => {
     const [progress, setProgress] = useState(0);
     const [loadingText, setLoadingText] = useState("Analyzing liquidity");
 
     useEffect(() => {
-        // Animate loading text
         const textInterval = setInterval(() => {
             setLoadingText(prev => {
                 if (prev === "Analyzing liquidity...") return "Analyzing liquidity";
@@ -30,7 +30,6 @@ const LiquidityLoader = () => {
             });
         }, 400);
 
-        // Animate progress bar
         const progressInterval = setInterval(() => {
             setProgress(prev => {
                 if (prev >= 100) return 100;
@@ -53,8 +52,10 @@ const LiquidityLoader = () => {
 
             <div className="relative z-10 text-center max-w-md mx-auto">
                 {/* Floating Icons */}
+
                 <div className="relative mb-6">
                     <div className="w-20 h-20 mx-auto relative">
+
                         {/* Rotating icons */}
                         <div className="absolute inset-0 animate-spin">
                             <FaChartLine className="absolute top-0 left-1/2 transform -translate-x-1/2 text-2xl text-accent-500" />
@@ -71,7 +72,7 @@ const LiquidityLoader = () => {
                 <h3 className="text-xl font-bold text-txt mb-2">Liquidity Analysis</h3>
                 <p className="text-muted text-sm mb-6">{loadingText}</p>
 
-                {/* Compact Progress Bar */}
+                {/* Progress Bar */}
                 <div className="w-full max-w-xs mx-auto mb-4">
                     <div className="w-full bg-surface rounded-full h-2 overflow-hidden">
                         <div 
@@ -82,7 +83,7 @@ const LiquidityLoader = () => {
                     <p className="text-xs text-muted mt-2">{progress}%</p>
                 </div>
 
-                {/* Quick status messages */}
+                {/* status messages */}
                 <div className="text-xs text-muted space-y-1">
                     {progress > 30 && <p>Loading market data...</p>}
                     {progress > 60 && <p>Calculating metrics...</p>}
@@ -130,9 +131,8 @@ export default function LiquidityCard({ coinId = "bitcoin" }) {
       setError(null);
 
       try {
-        // Show loader only on initial load, not on coin changes
-        if (isInitialLoad) {
-          await new Promise(resolve => setTimeout(resolve, 2000)); // 2 seconds for initial load
+        if (isInitialLoad) {         // Showing loader only on initial load, not on coin changes
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
 
         const res = await fetch(`/api/liquidity?id=${selectedCoin}&days=1`);
@@ -206,7 +206,6 @@ export default function LiquidityCard({ coinId = "bitcoin" }) {
   // safer access to volume (avoid runtime crash if coin or market_data missing)
   const volume = coin?.market_data?.total_volume?.usd ?? 0;
 
-  // compute risk value and fixed tailwind classes
   let risk = { label: "High", value: 85 };
   if (volume < 500_000_000) {
     risk = { label: "Low", value: 20 };
@@ -221,11 +220,7 @@ export default function LiquidityCard({ coinId = "bitcoin" }) {
     Medium: { bg: 'bg-yellow-400/10', text: 'text-yellow-400', border: 'border-yellow-400/30' },
     High: { bg: 'bg-green-400/10', text: 'text-green-400', border: 'border-green-400/30' },
   };
-  const riskStyles = riskClassMap[risk.label] || riskClassMap.High;
-
-  // compute a fixed border class based on risk.label
-  const riskBorderClass =
-    risk.label === 'Low' ? 'border-red-400/30' : risk.label === 'Medium' ? 'border-yellow-400/30' : 'border-green-400/30';
+  const riskStyles = riskClassMap[risk.label] || riskClassMap.Medium;
 
   // compute a fallback liquidity score when API doesn't provide one
   const computeLiquidityScore = (c) => {
@@ -252,13 +247,9 @@ export default function LiquidityCard({ coinId = "bitcoin" }) {
   const liquidityScoreData = [
     {
       name: 'Score',
-      value: liquidityScore ?? 0,
       fill: '#2CD493',
     },
   ];
-
-  // friendly label for rendering
-  const liquidityScoreLabel = liquidityScore == null ? 'N/A' : `${liquidityScore}`;
 
   return (
     <div className="w-auto space-y-6 mt-4 animate-fade-in">
@@ -448,7 +439,7 @@ export default function LiquidityCard({ coinId = "bitcoin" }) {
                 }}
                 formatter={(value) => [`$${formatVolume(value)}`, "Volume"]}
               />
-              <Bar dataKey="volume" fill="#2CD493" radius={[8, 8, 0, 0]}>
+              <Bar dataKey="volume" radius={[8, 8, 0, 0]}>
                 {topCoins.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={index === 0 ? '#2CD493' : '#2CD493AA'} />
                 ))}

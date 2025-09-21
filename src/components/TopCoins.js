@@ -173,19 +173,16 @@ function TopCoins() {
             </div>
           ))}
         </div>
-
-        {/* My Portfolio below top coins, same column width */}
         <MyPortfolio />
       </div>
 
-      {/* Right Side - Chart */}
+      {/* Chart */}
       <div className="flex-1 ml-8 mt-9">
         <ChartCard />
         </div>
       </div>
   );
 }
-
 export default memo(TopCoins);
 
 

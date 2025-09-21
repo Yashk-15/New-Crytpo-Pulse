@@ -6,7 +6,8 @@ import { FaHome, FaStar, FaPlus, FaCheck, FaTimes } from "react-icons/fa";
 import { addToPortfolio, getPortfolio } from "../utils/portfolio";
 import { addToWatchlist, removeFromWatchlist, isInWatchlist } from "../utils/watchlist";
 
-// Watchlist Success Toast Component
+// Watchlist Success Toast notifications :-
+
 const WatchlistToast = ({ isVisible, onClose, coinName, coinSymbol, coinImage, isAdded }) => {
   useEffect(() => {
     if (isVisible) {
@@ -69,7 +70,8 @@ const WatchlistToast = ({ isVisible, onClose, coinName, coinSymbol, coinImage, i
   );
 };
 
-// Creative Success Toast Component (Portfolio)
+// Success Toast Component for Portfolio addition :-
+
 const SuccessToast = ({ isVisible, onClose, coinName, amount, coinSymbol, coinImage }) => {
   useEffect(() => {
     if (isVisible) {
@@ -130,7 +132,8 @@ const SuccessToast = ({ isVisible, onClose, coinName, amount, coinSymbol, coinIm
   );
 };
 
-// Animated Floating Stars for Watchlist
+// Floating Stars for Watchlist :-
+
 const FloatingStars = ({ isVisible, coinImage }) => {
   if (!isVisible) return null;
 
@@ -154,7 +157,8 @@ const FloatingStars = ({ isVisible, coinImage }) => {
   );
 };
 
-// Watchlist Button Component
+// Watchlist Button :-
+
 const WatchlistButton = ({ onClick, isInWatchlist, isLoading }) => {
   if (isLoading) {
     return (
@@ -185,7 +189,7 @@ const WatchlistButton = ({ onClick, isInWatchlist, isLoading }) => {
   );
 };
 
-// Portfolio Button with States
+// Portfolio Button with States:-
 const PortfolioButton = ({ onClick, isInPortfolio, isLoading }) => {
   if (isLoading) {
     return (
@@ -234,7 +238,7 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
   const [isInWatchlistState, setIsInWatchlistState] = useState(false);
   const [isWatchlistLoading, setIsWatchlistLoading] = useState(false);
   const [showWatchlistToast, setShowWatchlistToast] = useState(false);
-  const [watchlistAction, setWatchlistAction] = useState(null); // 'added' or 'removed'
+  const [watchlistAction, setWatchlistAction] = useState(null);
   const [showFloatingStars, setShowFloatingStars] = useState(false);
 
   // Check if coin is already in portfolio and watchlist
@@ -276,9 +280,7 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
   const handleWatchlistToggle = async () => {
     try {
       setIsWatchlistLoading(true);
-      
-      // Simulate API delay for better UX
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 500)); // doing API delay for better UX
       
       if (isInWatchlistState) {
         removeFromWatchlist(coinId);
@@ -291,7 +293,6 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
         setShowFloatingStars(true);
         setTimeout(() => setShowFloatingStars(false), 2500);
       }
-      
       // Trigger watchlist update event
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('watchlist:updated'));
@@ -307,7 +308,7 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-green-950">
-      {/* Success Toast for Portfolio */}
+      {/* Success notification for Portfolio */}
       <SuccessToast
         isVisible={showSuccessToast}
         onClose={() => setShowSuccessToast(false)}
@@ -317,7 +318,7 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
         coinImage={coinImage}
       />
 
-      {/* Watchlist Toast */}
+      {/* Watchlist notification */}
       <WatchlistToast
         isVisible={showWatchlistToast}
         onClose={() => setShowWatchlistToast(false)}
@@ -338,7 +339,7 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             
-            {/* Left: Home Button */}
+            {/* Home Button */}
             <div className="flex items-center">
               <button
                 onClick={() => router.push('/')}
@@ -371,16 +372,14 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
               </div>
             )}
 
-            {/* Right: Action Buttons */}
+            {/* Action Buttons */}
+
             <div className="flex items-center gap-3">
-              {/* Watchlist Button */}
               <WatchlistButton
                 onClick={handleWatchlistToggle}
                 isInWatchlist={isInWatchlistState}
                 isLoading={isWatchlistLoading}
               />
-              
-              {/* Portfolio Button */}
               <PortfolioButton
                 onClick={() => setShowAddModal(true)}
                 isInPortfolio={isInPortfolio}
@@ -390,8 +389,7 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
           </div>
         </div>
       </div>
-
-      {/* Main Content */}
+      
       <div className="relative">
         {children}
       </div>

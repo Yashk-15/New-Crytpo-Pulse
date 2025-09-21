@@ -1,4 +1,3 @@
-// utils/portfolio.js
 
 export const getPortfolio = () => {
   if (typeof window === "undefined") return [];
@@ -47,5 +46,3 @@ export const removeFromPortfolio = (coinId) => {
   }
   return updated;
 };
-
-

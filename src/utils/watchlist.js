@@ -1,4 +1,3 @@
-// utils/watchlist.js
 
 export const getWatchlist = () => {
     if (typeof window === "undefined") return [];
@@ -26,4 +25,3 @@ export const getWatchlist = () => {
   export const isInWatchlist = (coinId) => {
     return getWatchlist().includes(coinId);
   };
-  

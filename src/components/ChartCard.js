@@ -19,7 +19,6 @@ function ChartCard({ initialCoin = "bitcoin", showDropdown = true }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch coins for dropdown
   useEffect(() => {
     async function fetchCoins() {
       try {
@@ -37,8 +36,7 @@ function ChartCard({ initialCoin = "bitcoin", showDropdown = true }) {
     }
   }, [showDropdown]);
 
-  // Fetch market chart + current price
-  useEffect(() => {
+  useEffect(() => {                            // fetching market chart data
     async function fetchChart() {
       try {
         setLoading(true);
@@ -105,7 +103,7 @@ function ChartCard({ initialCoin = "bitcoin", showDropdown = true }) {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold">CHART</h2>
 
-        {/* Coin Selector - shifted to top right */}
+        {/* Coin Selector */}
         <div className="flex items-center gap-4 mb-4">
           {/* Coin Selector */}
           {showDropdown && (

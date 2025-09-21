@@ -44,7 +44,7 @@ function ChartCard({ initialCoin = "bitcoin", showDropdown = true }) {
         setLoading(true);
         setError(null);
         const res = await fetch(
-          `/api/markets${selectedCoin}?days=${timeRange}&vs_currency=${currency}`
+          `/api/coins/${selectedCoin}?days=${timeRange}&vs_currency=${currency}`
         );
         
         if (!res.ok) {

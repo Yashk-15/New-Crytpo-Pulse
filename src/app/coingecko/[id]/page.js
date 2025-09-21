@@ -22,7 +22,7 @@ export default function CoinDetailsPage() {
         setLoading(true);
         setError(null);
         
-        const response = await fetch(`/api/markets/${coinId}`);
+        const response = await fetch(`/api/coins/${coinId}`);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch coin data: ${response.status}`);

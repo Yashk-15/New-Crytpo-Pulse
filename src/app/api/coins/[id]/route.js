@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 
-export async function GET(request, context) {
+export async function GET(request, { params }) {
   try {
-    const { id } = await context.params;
+    // ✅ FIX: Await the params in Next.js 15+
+    const { id } = await params;
     const { searchParams } = new URL(request.url);
 
     const days = searchParams.get("days");
@@ -40,6 +41,3 @@ export async function GET(request, context) {
     );
   }
 }
-
-
-  

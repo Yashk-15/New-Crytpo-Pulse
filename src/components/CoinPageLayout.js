@@ -4,14 +4,78 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { FaHome, FaStar, FaPlus, FaCheck, FaTimes } from "react-icons/fa";
 import { addToPortfolio, getPortfolio } from "../utils/portfolio";
+import { addToWatchlist, removeFromWatchlist, isInWatchlist } from "../utils/watchlist";
 
-// Creative Success Toast Component
+// Watchlist Success Toast Component
+const WatchlistToast = ({ isVisible, onClose, coinName, coinSymbol, coinImage, isAdded }) => {
+  useEffect(() => {
+    if (isVisible) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isVisible, onClose]);
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="fixed top-20 right-6 z-50 animate-slide-in">
+      <div className={`${isAdded ? 'bg-gradient-to-r from-yellow-500/95 to-yellow-600/95' : 'bg-gradient-to-r from-gray-500/95 to-gray-600/95'} backdrop-blur-md rounded-2xl shadow-2xl border ${isAdded ? 'border-yellow-400/30' : 'border-gray-400/30'} p-4 max-w-sm`}>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+              <FaStar className={`${isAdded ? 'text-yellow-200' : 'text-gray-200'} text-sm`} />
+            </div>
+            <h3 className="text-white font-bold text-sm">
+              {isAdded ? 'Added to Watchlist!' : 'Removed from Watchlist'}
+            </h3>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-white/70 hover:text-white transition-colors"
+          >
+            <FaTimes className="text-xs" />
+          </button>
+        </div>
+        
+        <div className="flex items-center gap-3 mb-3">
+          {coinImage && (
+            <div className="w-10 h-10 rounded-full bg-white/10 p-1">
+              <img 
+                src={coinImage} 
+                alt={coinName}
+                className="w-full h-full rounded-full"
+              />
+            </div>
+          )}
+          <div>
+            <p className="text-white font-semibold">{coinName}</p>
+            <p className={`${isAdded ? 'text-yellow-100' : 'text-gray-100'} text-xs`}>{coinSymbol?.toUpperCase()}</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-between">
+          <div className={`flex items-center gap-1 ${isAdded ? 'text-yellow-100' : 'text-gray-100'} text-xs`}>
+            <FaStar className={`${isAdded ? 'text-yellow-300' : 'text-gray-300'}`} />
+            <span>{isAdded ? 'Track price changes' : 'No longer tracking'}</span>
+          </div>
+          <div className="w-8 h-1 bg-white/30 rounded-full overflow-hidden">
+            <div className="w-full h-full bg-white animate-shrink origin-right"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Creative Success Toast Component (Portfolio)
 const SuccessToast = ({ isVisible, onClose, coinName, amount, coinSymbol, coinImage }) => {
   useEffect(() => {
     if (isVisible) {
       const timer = setTimeout(() => {
         onClose();
-      }, 4000); // Auto close after 4 seconds
+      }, 4000);
       return () => clearTimeout(timer);
     }
   }, [isVisible, onClose]);
@@ -66,34 +130,58 @@ const SuccessToast = ({ isVisible, onClose, coinName, amount, coinSymbol, coinIm
   );
 };
 
-// Animated Floating Particles Component
-const FloatingParticles = ({ isVisible, coinImage }) => {
+// Animated Floating Stars for Watchlist
+const FloatingStars = ({ isVisible, coinImage }) => {
   if (!isVisible) return null;
 
   return (
     <div className="fixed inset-0 pointer-events-none z-40">
-      {[...Array(8)].map((_, i) => (
+      {[...Array(6)].map((_, i) => (
         <div
           key={i}
-          className="absolute animate-float-up opacity-0"
+          className="absolute animate-float-star opacity-0"
           style={{
-            left: `${20 + i * 10}%`,
-            animationDelay: `${i * 0.2}s`,
-            animationDuration: '3s'
+            left: `${30 + i * 8}%`,
+            top: `${20 + i * 5}%`,
+            animationDelay: `${i * 0.3}s`,
+            animationDuration: '2.5s'
           }}
         >
-          {coinImage ? (
-            <img 
-              src={coinImage} 
-              alt=""
-              className="w-6 h-6 rounded-full"
-            />
-          ) : (
-            <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-          )}
+          <FaStar className="w-4 h-4 text-yellow-400" />
         </div>
       ))}
     </div>
+  );
+};
+
+// Watchlist Button Component
+const WatchlistButton = ({ onClick, isInWatchlist, isLoading }) => {
+  if (isLoading) {
+    return (
+      <button
+        disabled
+        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-600 text-gray-400 cursor-not-allowed font-medium transition-all duration-200"
+      >
+        <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent"></div>
+        <span className="text-sm">Processing...</span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200 shadow-lg ${
+        isInWatchlist 
+          ? 'bg-yellow-600 hover:bg-yellow-500 text-white hover:shadow-yellow-500/25 hover:scale-105' 
+          : 'bg-gray-600 hover:bg-yellow-600 text-gray-200 hover:text-white hover:shadow-yellow-500/25 hover:scale-105'
+      }`}
+    >
+      <FaStar className={`text-sm ${isInWatchlist ? 'fill-current' : ''}`} />
+      <span className="text-sm">
+        {isInWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
+      </span>
+    </button>
   );
 };
 
@@ -139,56 +227,87 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
   const [showAddModal, setShowAddModal] = useState(false);
   const [amount, setAmount] = useState("");
   const [isInPortfolio, setIsInPortfolio] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isPortfolioLoading, setIsPortfolioLoading] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
-  const [showParticles, setShowParticles] = useState(false);
+  
+  // Watchlist state
+  const [isInWatchlistState, setIsInWatchlistState] = useState(false);
+  const [isWatchlistLoading, setIsWatchlistLoading] = useState(false);
+  const [showWatchlistToast, setShowWatchlistToast] = useState(false);
+  const [watchlistAction, setWatchlistAction] = useState(null); // 'added' or 'removed'
+  const [showFloatingStars, setShowFloatingStars] = useState(false);
 
-  // Check if coin is already in portfolio
-  useState(() => {
-    const portfolio = getPortfolio();
-    setIsInPortfolio(portfolio.some(item => item.coinId === coinId));
+  // Check if coin is already in portfolio and watchlist
+  useEffect(() => {
+    if (coinId) {
+      const portfolio = getPortfolio();
+      setIsInPortfolio(portfolio.some(item => item.coinId === coinId));
+      setIsInWatchlistState(isInWatchlist(coinId));
+    }
   }, [coinId]);
 
   const handleAddToPortfolio = async () => {
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
-      // Could add a validation toast here too
       return;
     }
 
     try {
-      setIsLoading(true);
+      setIsPortfolioLoading(true);
       
-      // Simulate API delay for better UX
       await new Promise(resolve => setTimeout(resolve, 800));
       
       addToPortfolio(coinId, Number(amount));
       setIsInPortfolio(true);
       setShowAddModal(false);
       
-      // Trigger portfolio update event
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('portfolio:updated'));
       }
       
-      // Show creative success feedback
       setShowSuccessToast(true);
-      setShowParticles(true);
-      
-      // Hide particles after animation
-      setTimeout(() => setShowParticles(false), 3000);
-      
       setAmount("");
     } catch (error) {
       console.error("Failed to add to portfolio:", error);
-      // Could show error toast here
     } finally {
-      setIsLoading(false);
+      setIsPortfolioLoading(false);
+    }
+  };
+
+  const handleWatchlistToggle = async () => {
+    try {
+      setIsWatchlistLoading(true);
+      
+      // Simulate API delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      if (isInWatchlistState) {
+        removeFromWatchlist(coinId);
+        setIsInWatchlistState(false);
+        setWatchlistAction('removed');
+      } else {
+        addToWatchlist(coinId);
+        setIsInWatchlistState(true);
+        setWatchlistAction('added');
+        setShowFloatingStars(true);
+        setTimeout(() => setShowFloatingStars(false), 2500);
+      }
+      
+      // Trigger watchlist update event
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('watchlist:updated'));
+      }
+      
+      setShowWatchlistToast(true);
+    } catch (error) {
+      console.error("Failed to update watchlist:", error);
+    } finally {
+      setIsWatchlistLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-green-950">
-      {/* Success Toast */}
+      {/* Success Toast for Portfolio */}
       <SuccessToast
         isVisible={showSuccessToast}
         onClose={() => setShowSuccessToast(false)}
@@ -198,9 +317,19 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
         coinImage={coinImage}
       />
 
-      {/* Floating Particles */}
-      <FloatingParticles 
-        isVisible={showParticles} 
+      {/* Watchlist Toast */}
+      <WatchlistToast
+        isVisible={showWatchlistToast}
+        onClose={() => setShowWatchlistToast(false)}
+        coinName={coinName}
+        coinSymbol={coinSymbol}
+        coinImage={coinImage}
+        isAdded={watchlistAction === 'added'}
+      />
+
+      {/* Floating Stars for Watchlist */}
+      <FloatingStars 
+        isVisible={showFloatingStars} 
         coinImage={coinImage}
       />
 
@@ -244,10 +373,18 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
 
             {/* Right: Action Buttons */}
             <div className="flex items-center gap-3">
+              {/* Watchlist Button */}
+              <WatchlistButton
+                onClick={handleWatchlistToggle}
+                isInWatchlist={isInWatchlistState}
+                isLoading={isWatchlistLoading}
+              />
+              
+              {/* Portfolio Button */}
               <PortfolioButton
                 onClick={() => setShowAddModal(true)}
                 isInPortfolio={isInPortfolio}
-                isLoading={isLoading}
+                isLoading={isPortfolioLoading}
               />
             </div>
           </div>
@@ -322,10 +459,10 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
               </button>
               <button
                 onClick={handleAddToPortfolio}
-                disabled={!amount || isNaN(amount) || Number(amount) <= 0 || isLoading}
+                disabled={!amount || isNaN(amount) || Number(amount) <= 0 || isPortfolioLoading}
                 className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-medium transition-all duration-200 shadow-lg hover:shadow-green-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {isLoading ? (
+                {isPortfolioLoading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                     <span>Adding...</span>
@@ -365,13 +502,16 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
           }
         }
         
-        @keyframes float-up {
+        @keyframes float-star {
           0% {
-            transform: translateY(100vh) rotate(0deg);
+            transform: translateY(50px) rotate(0deg) scale(0);
+            opacity: 0;
+          }
+          50% {
             opacity: 1;
           }
           100% {
-            transform: translateY(-100px) rotate(360deg);
+            transform: translateY(-50px) rotate(180deg) scale(1);
             opacity: 0;
           }
         }
@@ -389,12 +529,12 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
           animation: modal-in 0.3s ease-out;
         }
         
-        .animate-float-up {
-          animation: float-up 3s ease-out forwards;
+        .animate-float-star {
+          animation: float-star 2.5s ease-out forwards;
         }
         
         .animate-shrink {
-          animation: shrink 4s linear;
+          animation: shrink 3s linear;
         }
       `}</style>
     </div>

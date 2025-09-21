@@ -1,12 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Star, Home, TrendingUp, AlertTriangle, Search } from "lucide-react";
+import { Star, Home, TrendingUp, AlertTriangle, Search, Trash2, ExternalLink } from "lucide-react";
 import Link from "next/link";
-
-// Mock watchlist utility (replace with your actual implementation)
-const getWatchlist = () => {
-  return ["bitcoin", "ethereum", "solana"]; // Mock data
-};
+import { getWatchlist, removeFromWatchlist } from "../../utils/watchlist";
 
 // Watchlist Loader Component
 const WatchlistLoader = () => {
@@ -160,81 +156,147 @@ const CoinCardSkeleton = () => (
   </div>
 );
 
+// Remove confirmation modal
+const RemoveConfirmModal = ({ isOpen, onClose, onConfirm, coinName, coinSymbol, coinImage }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-6 w-full max-w-md border border-gray-700 shadow-2xl animate-modal-in">
+        <div className="flex items-center gap-3 mb-6">
+          {coinImage && (
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-400/20 to-red-600/20 p-1">
+              <img 
+                src={coinImage} 
+                alt={coinName}
+                className="w-full h-full rounded-full"
+              />
+            </div>
+          )}
+          <div>
+            <h3 className="text-white font-bold text-xl">Remove from Watchlist</h3>
+            <p className="text-gray-400 text-sm">{coinName} ({coinSymbol?.toUpperCase()})</p>
+          </div>
+        </div>
+
+        <p className="text-gray-300 mb-6">
+          Are you sure you want to remove <span className="text-white font-semibold">{coinName}</span> from your watchlist?
+        </p>
+
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-3 rounded-xl bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white transition-all duration-200 font-medium"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-medium transition-all duration-200 shadow-lg hover:shadow-red-500/25 flex items-center justify-center gap-2"
+          >
+            <Trash2 className="text-sm" />
+            <span>Remove</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function WatchlistPage() {
   const [coins, setCoins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [removeModal, setRemoveModal] = useState({ isOpen: false, coin: null });
 
-  // Mock coin data for demo
-  const mockCoins = [
-    {
-      id: "bitcoin",
-      name: "Bitcoin",
-      symbol: "BTC",
-      image: { small: "https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png" },
-      market_data: {
-        current_price: { usd: 43250 },
-        price_change_percentage_24h: 2.5
-      },
-      market_cap_rank: 1
-    },
-    {
-      id: "ethereum", 
-      name: "Ethereum",
-      symbol: "ETH", 
-      image: { small: "https://coin-images.coingecko.com/coins/images/279/small/ethereum.png" },
-      market_data: {
-        current_price: { usd: 2650 },
-        price_change_percentage_24h: -1.2
-      },
-      market_cap_rank: 2
-    },
-    {
-      id: "solana",
-      name: "Solana", 
-      symbol: "SOL",
-      image: { small: "https://coin-images.coingecko.com/coins/images/4128/small/solana.png" },
-      market_data: {
-        current_price: { usd: 98.50 },
-        price_change_percentage_24h: 5.8
-      },
-      market_cap_rank: 5
+  // Fetch coin data from CoinGecko API
+  const fetchCoinData = async (coinIds) => {
+    if (!coinIds.length) return [];
+    
+    try {
+      const response = await fetch(`/api/markets?vs_currency=usd&ids=${coinIds.join(',')}&order=market_cap_desc&per_page=${coinIds.length}&page=1&sparkline=false`);
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching coin data:', error);
+      throw error;
     }
-  ];
+  };
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const watchlistIds = getWatchlist();
+      
+      // Show initial loader for better UX
+      if (isInitialLoad) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      
+      if (watchlistIds.length === 0) {
+        setCoins([]);
+        return;
+      }
+
+      // Fetch real coin data from API
+      const coinData = await fetchCoinData(watchlistIds);
+      setCoins(coinData);
+
+    } catch (err) {
+      console.error("Error fetching watchlist:", err);
+      setError(err.message || "Failed to load watchlist");
+    } finally {
+      setLoading(false);
+      setIsInitialLoad(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const list = getWatchlist();
-        
-        // Show initial loader for better UX
-        if (isInitialLoad) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-        
-        if (list.length === 0) {
-          setCoins([]);
-          return;
-        }
+    fetchData();
 
-        // For demo, use mock data
-        setCoins(mockCoins);
-
-      } catch (err) {
-        console.error("Error fetching watchlist:", err);
-        setError(err.message || "Failed to load watchlist");
-      } finally {
-        setLoading(false);
-        setIsInitialLoad(false);
-      }
+    // Listen for watchlist updates from other components
+    const handleWatchlistUpdate = () => {
+      fetchData();
     };
 
-    fetchData();
+    window.addEventListener('watchlist:updated', handleWatchlistUpdate);
+    return () => {
+      window.removeEventListener('watchlist:updated', handleWatchlistUpdate);
+    };
   }, []);
+
+  const handleRemoveCoin = (coin) => {
+    setRemoveModal({ 
+      isOpen: true, 
+      coin: {
+        id: coin.id,
+        name: coin.name,
+        symbol: coin.symbol,
+        image: coin.image
+      }
+    });
+  };
+
+  const confirmRemove = () => {
+    if (removeModal.coin) {
+      removeFromWatchlist(removeModal.coin.id);
+      setCoins(coins.filter(coin => coin.id !== removeModal.coin.id));
+      
+      // Dispatch update event
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('watchlist:updated'));
+      }
+    }
+    setRemoveModal({ isOpen: false, coin: null });
+  };
 
   // Show full-screen loader only on initial load
   if (loading && isInitialLoad) {
@@ -276,14 +338,14 @@ export default function WatchlistPage() {
               
               {/* Home Button */}
               <Link href="/">
-              <button className="group px-4 sm:px-5 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 hover:scale-105 transition-all duration-300 flex items-center gap-2 min-w-[100px] sm:min-w-[120px] justify-center">
-                <Home className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-sm sm:text-base">Home</span>
-                <div className="w-0 group-hover:w-4 transition-all duration-300 overflow-hidden">
-                  <span>→</span>
-                </div>
-              </button>
-               </Link>
+                <button className="group px-4 sm:px-5 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 hover:scale-105 transition-all duration-300 flex items-center gap-2 min-w-[100px] sm:min-w-[120px] justify-center">
+                  <Home className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-sm sm:text-base">Home</span>
+                  <div className="w-0 group-hover:w-4 transition-all duration-300 overflow-hidden">
+                    <span>→</span>
+                  </div>
+                </button>
+              </Link>
             </div>
           </div>
 
@@ -300,7 +362,7 @@ export default function WatchlistPage() {
             </h3>
             <p className="text-gray-300 mb-4">{error}</p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={() => fetchData()}
               className="px-6 py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 rounded-xl text-red-400 font-medium transition-all"
             >
               Try Again
@@ -322,66 +384,85 @@ export default function WatchlistPage() {
             <p className="text-gray-300 mb-6">
               Start building your watchlist by adding your favorite cryptocurrencies
             </p>
-            <button className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-green-500/30 transition-all">
-              <Search className="w-4 h-4" />
-              <span>Discover Coins</span>
-              <span>→</span>
-            </button>
+            <Link href="/">
+              <button className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-green-500/30 transition-all">
+                <Search className="w-4 h-4" />
+                <span>Discover Coins</span>
+                <span>→</span>
+              </button>
+            </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
             {coins.map((coin) => (
-              <div key={coin.id} className="group bg-gradient-to-br from-gray-800 to-gray-800/80 p-6 rounded-2xl border border-gray-700 hover:border-green-500/50 cursor-pointer hover:shadow-xl hover:shadow-green-500/10 transition-all duration-300 backdrop-blur-xl relative overflow-hidden">
+              <div key={coin.id} className="group bg-gradient-to-br from-gray-800 to-gray-800/80 p-6 rounded-2xl border border-gray-700 hover:border-green-500/50 transition-all duration-300 backdrop-blur-xl relative overflow-hidden">
                 {/* Subtle background gradient */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full blur-2xl group-hover:bg-green-500/10 transition-all"></div>
                 
-                <div className="relative flex items-center gap-4">
-                  <div className="relative flex-shrink-0">
-                    <img
-                      src={coin.image?.small || "/placeholder-coin.svg"}
-                      alt={coin.name}
-                      className="w-12 h-12 rounded-full shadow-lg"
-                    />
-                    {/* Subtle glow effect */}
-                    <div className="absolute inset-0 rounded-full bg-green-500/20 blur-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h2 className="font-bold text-lg text-white group-hover:text-green-500 transition-colors truncate">
-                      {coin.name}
-                    </h2>
-                    <p className="text-sm text-gray-400 uppercase font-medium">
-                      {coin.symbol}
-                    </p>
-                    
-                    {/* Price and change */}
-                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      <p className="text-xl font-bold text-green-500">
-                        ${coin.market_data?.current_price?.usd?.toLocaleString() || "N/A"}
-                      </p>
-                      {coin.market_data?.price_change_percentage_24h && (
-                        <span className={`text-sm font-medium px-2 py-1 rounded-lg flex-shrink-0 ${
-                          coin.market_data.price_change_percentage_24h > 0
-                            ? 'bg-green-400/10 text-green-400'
-                            : 'bg-red-400/10 text-red-400'
-                        }`}>
-                          {coin.market_data.price_change_percentage_24h > 0 ? '+' : ''}
-                          {coin.market_data.price_change_percentage_24h.toFixed(2)}%
-                        </span>
-                      )}
+                {/* Remove button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveCoin(coin);
+                  }}
+                  className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300"
+                  title="Remove from watchlist"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                
+                <Link href={`/coingecko/${coin.id}`}>
+                  <div className="relative flex items-center gap-4 cursor-pointer">
+                    <div className="relative flex-shrink-0">
+                      <img
+                        src={coin.image}
+                        alt={coin.name}
+                        className="w-12 h-12 rounded-full shadow-lg"
+                      />
+                      {/* Subtle glow effect */}
+                      <div className="absolute inset-0 rounded-full bg-green-500/20 blur-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     </div>
                     
-                    {/* Market cap rank */}
-                    {coin.market_cap_rank && (
-                      <div className="mt-3 flex items-center gap-1">
-                        <span className="text-xs text-gray-400">Rank:</span>
-                        <span className="text-sm font-semibold text-white">
-                          #{coin.market_cap_rank}
-                        </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h2 className="font-bold text-lg text-white group-hover:text-green-500 transition-colors truncate">
+                          {coin.name}
+                        </h2>
+                        <ExternalLink className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                       </div>
-                    )}
+                      <p className="text-sm text-gray-400 uppercase font-medium">
+                        {coin.symbol}
+                      </p>
+                      
+                      {/* Price and change */}
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        <p className="text-xl font-bold text-green-500">
+                          ${coin.current_price?.toLocaleString() || "N/A"}
+                        </p>
+                        {coin.price_change_percentage_24h && (
+                          <span className={`text-sm font-medium px-2 py-1 rounded-lg flex-shrink-0 ${
+                            coin.price_change_percentage_24h > 0
+                              ? 'bg-green-400/10 text-green-400'
+                              : 'bg-red-400/10 text-red-400'
+                          }`}>
+                            {coin.price_change_percentage_24h > 0 ? '+' : ''}
+                            {coin.price_change_percentage_24h.toFixed(2)}%
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Market cap rank */}
+                      {coin.market_cap_rank && (
+                        <div className="mt-3 flex items-center gap-1">
+                          <span className="text-xs text-gray-400">Rank:</span>
+                          <span className="text-sm font-semibold text-white">
+                            #{coin.market_cap_rank}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </Link>
                 
                 {/* Hover indicator */}
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500 to-green-400 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
@@ -391,17 +472,33 @@ export default function WatchlistPage() {
         )}
       </div>
 
+      {/* Remove Confirmation Modal */}
+      <RemoveConfirmModal
+        isOpen={removeModal.isOpen}
+        onClose={() => setRemoveModal({ isOpen: false, coin: null })}
+        onConfirm={confirmRemove}
+        coinName={removeModal.coin?.name}
+        coinSymbol={removeModal.coin?.symbol}
+        coinImage={removeModal.coin?.image}
+      />
+
       <style jsx>{`
         @keyframes fade-in {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes modal-in {
+          from { transform: scale(0.9); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
         .animate-fade-in {
           animation: fade-in 0.6s ease-out;
+        }
+        .animate-modal-in {
+          animation: modal-in 0.3s ease-out;
         }
       `}</style>
     </div>
   );
 }
-
 

@@ -111,7 +111,7 @@ export default function LiquidityCard({ coinId = "bitcoin" }) {
     async function fetchCoins() {
       try {
         const res = await fetch(
-          "/api/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1"
+          "/api/liquidity/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1"
         );
         const data = await res.json();
         setCoins(data);

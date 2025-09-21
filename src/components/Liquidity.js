@@ -111,7 +111,7 @@ export default function LiquidityCard({ coinId = "bitcoin" }) {
     async function fetchCoins() {
       try {
         const res = await fetch(
-          "/api/liquidity/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1"
+          "/api/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1"
         );
         const data = await res.json();
         setCoins(data);
@@ -135,7 +135,7 @@ export default function LiquidityCard({ coinId = "bitcoin" }) {
           await new Promise(resolve => setTimeout(resolve, 2000)); // 2 seconds for initial load
         }
 
-        const res = await fetch(`/api/coins/liquidity?id=${selectedCoin}&days=1`);
+        const res = await fetch(`/api/liquidity?id=${selectedCoin}&days=1`);
         if (!res.ok) throw new Error(`Failed to fetch liquidity data: ${res.status}`);
         const json = await res.json();
 

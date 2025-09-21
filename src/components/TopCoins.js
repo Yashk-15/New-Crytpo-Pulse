@@ -45,7 +45,7 @@ function TopCoins() {
       try {
         setLoading(true);
         // request only 3 items from API
-        const res = await fetch('/api/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=3&page=1&sparkline=false');
+        const res = await fetch('/api/markets?vs_currency=usd&order=market_cap_desc&per_page=3&page=1&sparkline=false');
         if (!res.ok) {
           const text = await res.text().catch(() => '');
           throw new Error(`Failed to load top coins: ${res.status} ${text}`);

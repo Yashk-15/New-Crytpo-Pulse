@@ -24,7 +24,7 @@ function ChartCard({ initialCoin = "bitcoin", showDropdown = true }) {
     async function fetchCoins() {
       try {
         const res = await fetch(
-          "/api/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false"
+          "/api/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=false"
         );
         const data = await res.json();
         setCoins(data);
@@ -44,7 +44,7 @@ function ChartCard({ initialCoin = "bitcoin", showDropdown = true }) {
         setLoading(true);
         setError(null);
         const res = await fetch(
-          `/api/coins/${selectedCoin}?days=${timeRange}&vs_currency=${currency}`
+          `/api/markets${selectedCoin}?days=${timeRange}&vs_currency=${currency}`
         );
         
         if (!res.ok) {

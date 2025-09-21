@@ -31,7 +31,7 @@ export default function MyPortfolio() {
       try {
         const ids = items.map((i) => i.coinId).join(',');
         const res = await fetch(
-          `/api/coins/markets?vs_currency=usd&ids=${encodeURIComponent(ids)}&order=market_cap_desc&per_page=250&page=1&sparkline=false`
+          `/api/markets?vs_currency=usd&ids=${encodeURIComponent(ids)}&order=market_cap_desc&per_page=250&page=1&sparkline=false`
         );
         if (!res.ok) {
           const text = await res.text().catch(() => '');

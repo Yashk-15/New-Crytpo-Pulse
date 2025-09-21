@@ -12,7 +12,7 @@ function CoinsTable() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch('/api/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false');
+        const res = await fetch('/api/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false');
         if (!res.ok) {
           const t = await res.text().catch(() => '');
           throw new Error(`Failed to load coins table: ${res.status} ${t}`);

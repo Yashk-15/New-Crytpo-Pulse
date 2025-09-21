@@ -431,13 +431,6 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
                   className="w-full bg-gray-700 text-white px-4 py-3 rounded-xl border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg font-medium"
                   autoFocus
                 />
-                {coinPrice && amount && !isNaN(amount) && Number(amount) > 0 && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <div className="bg-green-500/10 text-green-400 px-2 py-1 rounded-lg text-xs font-medium">
-                      ${(Number(amount) * Number(coinPrice)).toLocaleString()}
-                    </div>
-                  </div>
-                )}
               </div>
               {coinPrice && amount && !isNaN(amount) && Number(amount) > 0 && (
                 <p className="text-gray-400 text-sm mt-2 flex items-center gap-2">

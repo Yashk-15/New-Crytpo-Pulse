@@ -4,15 +4,12 @@ import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 
-// Custom hook for debounced search with caching :-
-
+// Custom hook for debounced search with caching
 function useOptimizedSearch(searchTerm, delay = 300) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
-  // Cache for search results :-
-
   const cache = useRef(new Map());
   const abortController = useRef(null);
 
@@ -26,7 +23,7 @@ function useOptimizedSearch(searchTerm, delay = 300) {
         return;
       }
 
-      // Checking cache first :-
+      // Check cache first
       if (cache.current.has(trimmedTerm)) {
         setResults(cache.current.get(trimmedTerm));
         setLoading(false);
@@ -52,12 +49,12 @@ function useOptimizedSearch(searchTerm, delay = 300) {
         }
 
         const data = await response.json();
-        const limitedResults = (data.coins || []).slice(0, 10);  //only 10 coins
+        const limitedResults = (data.coins || []).slice(0, 10);
         
         // Cache the results
         cache.current.set(trimmedTerm, limitedResults);
         
-        // Clean cache if it gets too large :-
+        // Clean cache if it gets too large
         if (cache.current.size > 50) {
           const firstKey = cache.current.keys().next().value;
           cache.current.delete(firstKey);
@@ -92,7 +89,7 @@ function useOptimizedSearch(searchTerm, delay = 300) {
   return { results, loading, error };
 }
 
-// virtual dropdown component for better performance with large lists :-
+// Virtual dropdown component for better performance
 function SearchDropdown({ 
   results, 
   loading, 
@@ -165,11 +162,12 @@ export default function Navbar({ onSearch }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [navigationLoading, setNavigationLoading] = useState(false);
   
   const itemRefs = useRef([]);
   const searchInputRef = useRef(null);
 
-  // Using optimized search hook :-
+  // Using optimized search hook
   const { results: searchResults, loading, error } = useOptimizedSearch(searchTerm);
 
   // Memoize navigation items to prevent re-renders
@@ -188,18 +186,30 @@ export default function Navbar({ onSearch }) {
     onSearch?.(value);
   }, [onSearch]);
 
-  // Optimized coin selection with faster navigation
+  // Optimized coin selection with loading state
   const handleSelectCoin = useCallback((coin) => {
     setSearchTerm(coin.name);
     setIsDropdownOpen(false);
     setHighlightedIndex(-1);
+    setNavigationLoading(true);
     onSearch?.(coin.id);
     
-    // Use replace for faster navigation and better UX
+    // Add loading timeout to prevent indefinite loading
+    setTimeout(() => setNavigationLoading(false), 3000);
+    
     router.replace(`/coingecko/${coin.id}`);
   }, [router, onSearch]);
 
-  // Keyboard navigation :-
+  // Navigation click handler with loading state
+  const handleNavClick = useCallback((href) => {
+    if (pathname !== href) {
+      setNavigationLoading(true);
+      // Reset loading after navigation timeout
+      setTimeout(() => setNavigationLoading(false), 2000);
+    }
+  }, [pathname]);
+
+  // Keyboard navigation
   const handleKeyDown = useCallback((e) => {
     if (!isDropdownOpen || searchResults.length === 0) return;
 
@@ -230,7 +240,7 @@ export default function Navbar({ onSearch }) {
     }
   }, [isDropdownOpen, searchResults, highlightedIndex, handleSelectCoin]);
 
-  // Auto-scroll highlighted :-
+  // Auto-scroll highlighted item
   useEffect(() => {
     if (
       highlightedIndex >= 0 &&
@@ -243,7 +253,7 @@ export default function Navbar({ onSearch }) {
     }
   }, [highlightedIndex]);
 
-  // Close dropdown when clicking outside :-
+  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchInputRef.current && !searchInputRef.current.contains(event.target)) {
@@ -258,124 +268,143 @@ export default function Navbar({ onSearch }) {
     };
   }, []);
 
+  // Reset navigation loading on route change
+  useEffect(() => {
+    setNavigationLoading(false);
+  }, [pathname]);
+
   return (
-    <header className="sticky top-0 z-20 bg-bg/80 backdrop-blur border-b border-border">
-      <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between gap-6">
-        {/* Logo + Brand */}
-        <div className="flex items-center gap-3">
-          <div className="w-[90px] h-[90px] flex items-center justify-center">
-            <Image
-              src="/Print.svg"
-              alt="Crypto Pulse"
-              width={90}
-              height={90}
-              className="w-full h-full object-contain"
-              priority
-            />
+    <>
+      {/* Navigation Loading Overlay */}
+      {navigationLoading && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-gray-800/90 rounded-2xl p-6 flex items-center gap-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-2 border-green-400 border-t-transparent"></div>
+            <span className="text-white font-medium">Loading...</span>
           </div>
-          <span className="text-white font-bold text-xl">
-            CRYPTO <span className="text-green-400">PULSE</span>
-          </span>
         </div>
+      )}
 
-        {/* Navigation */}
-        <nav className="flex-1 flex items-center gap-2 justify-center">
-          {navigationItems.map((item) => {
-            const isActive = pathname === item.path;
-            return (
-              <Link key={item.label} href={item.path} prefetch={true}>
-                <button
-                  className={`px-3 py-1 rounded-full text-sm transition-colors
-                    ${isActive
-                      ? "bg-green-500 text-black font-semibold"
-                      : "text-gray-300 hover:text-white hover:bg-surface2"
+      <header className="sticky top-0 z-20 bg-bg/80 backdrop-blur border-b border-border">
+        <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between gap-6">
+          {/* Logo + Brand */}
+          <div className="flex items-center gap-3">
+            <div className="w-[90px] h-[90px] flex items-center justify-center">
+              <Image
+                src="/Print.svg"
+                alt="Crypto Pulse"
+                width={90}
+                height={90}
+                className="w-full h-full object-contain"
+                priority
+              />
+            </div>
+            <span className="text-white font-bold text-xl">
+              CRYPTO <span className="text-green-400">PULSE</span>
+            </span>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 flex items-center gap-2 justify-center">
+            {navigationItems.map((item) => {
+              const isActive = pathname === item.path;
+              return (
+                <Link key={item.label} href={item.path} prefetch={true}>
+                  <button
+                    onClick={() => handleNavClick(item.path)}
+                    className={`px-3 py-1 rounded-full text-sm transition-all duration-200 relative ${
+                      isActive
+                        ? "bg-green-500 text-black font-semibold"
+                        : "text-gray-300 hover:text-white hover:bg-surface2"
                     }`}
-                >
-                  {item.label}
-                </button>
-              </Link>
-            );
-          })}
-        </nav>
+                  >
+                    {item.label}
+                  </button>
+                </Link>
+              );
+            })}
+          </nav>
 
-        {/* Search + Actions */}
-        <div className="flex items-center gap-3">
-          {/* Enhanced search box */}
-          <div className="relative">
-            <input
-              ref={searchInputRef}
-              value={searchTerm}
-              onChange={handleSearchChange}
-              onKeyDown={handleKeyDown}
-              placeholder="Search coin..."
-              autoComplete="off"
-              spellCheck="false"
-              className="bg-gray-700 text-gray-200 px-3 py-2 pl-9 rounded-full text-sm 
-                 border border-gray-600 focus:outline-none focus:ring-2 
-                 focus:ring-green-400 placeholder-gray-400 transition-all
-                 w-48 focus:w-56"
-            />
-            
-            {/* Search icon */}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1010.5 3a7.5 7.5 0 006.15 13.65z"
+          {/* Search + Actions */}
+          <div className="flex items-center gap-3">
+            {/* Enhanced search box */}
+            <div className="relative">
+              <input
+                ref={searchInputRef}
+                value={searchTerm}
+                onChange={handleSearchChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Search coin..."
+                autoComplete="off"
+                spellCheck="false"
+                className="bg-gray-700 text-gray-200 px-3 py-2 pl-9 rounded-full text-sm 
+                   border border-gray-600 focus:outline-none focus:ring-2 
+                   focus:ring-green-400 placeholder-gray-400 transition-all
+                   w-48 focus:w-56"
               />
-            </svg>
-
-            {/* Clear button */}
-            {searchTerm && (
-              <button
-                onClick={() => {
-                  setSearchTerm("");
-                  setIsDropdownOpen(false);
-                  searchInputRef.current?.focus();
-                }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
+              
+              {/* Search icon */}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
               >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path
-                    fillRule="evenodd"
-                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1010.5 3a7.5 7.5 0 006.15 13.65z"
+                />
+              </svg>
+
+              {/* Clear button */}
+              {searchTerm && (
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setIsDropdownOpen(false);
+                    searchInputRef.current?.focus();
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              )}
+
+              {/* Search dropdown */}
+              {isDropdownOpen && (
+                <SearchDropdown
+                  results={searchResults}
+                  loading={loading}
+                  error={error}
+                  onSelect={handleSelectCoin}
+                  highlightedIndex={highlightedIndex}
+                  itemRefs={itemRefs}
+                />
+              )}
+            </div>
+
+            <Link href="/watchlist" prefetch={true}>
+              <button
+                onClick={() => handleNavClick("/watchlist")}
+                className="px-4 py-2 rounded-full text-sm font-medium transition-all
+                  bg-gradient-to-r from-lime-700 via-lime-700 to-lime-700
+                  text-white shadow-md hover:shadow-lg hover:scale-105"
+              >
+                Watchlist
               </button>
-            )}
-
-            {/* dropdown */}
-            {isDropdownOpen && (
-              <SearchDropdown
-                results={searchResults}
-                loading={loading}
-                error={error}
-                onSelect={handleSelectCoin}
-                highlightedIndex={highlightedIndex}
-                itemRefs={itemRefs}
-              />
-            )}
+            </Link>
           </div>
-
-          <Link href="/watchlist" prefetch={true}>
-            <button
-              className="px-4 py-2 rounded-full text-sm font-medium transition-all
-                bg-gradient-to-r from-lime-700 via-lime-700 to-lime-700
-                text-white shadow-md hover:shadow-lg hover:scale-105"
-            >
-              Watchlist
-            </button>
-          </Link>
         </div>
-      </div>
-    </header>
+      </header>
+    </>
   );
 }

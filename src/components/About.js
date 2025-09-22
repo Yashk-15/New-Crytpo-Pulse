@@ -58,7 +58,66 @@ const CryptoLoader = () => {
                 <div className="w-full h-full bg-[linear-gradient(rgba(0,255,127,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,127,0.1)_1px,transparent_1px)] bg-[size:50px_50px] animate-pulse"></div>
             </div>
 
-           
+            <div className="relative z-10 text-center">
+                {/* Floating Crypto Icons */}
+                <div className="relative mb-8 flex justify-center">
+                    <div className="w-32 h-32 relative flex items-center justify-center">
+                        {cryptoIcons.map((crypto, index) => {
+                            const IconComponent = crypto.icon;
+                            const angle = (index * 90) * (Math.PI / 180);
+                            const radius = 60;
+                            const x = Math.cos(angle) * radius;
+                            const y = Math.sin(angle) * radius;
+                            
+                            return (
+                                <div
+                                    key={index}
+                                    className="absolute"
+                                    style={{
+                                        transform: `translate(${x}px, ${y}px)`,
+                                        animationDelay: crypto.delay,
+                                    }}
+                                >
+                                    <IconComponent 
+                                        className={`text-4xl ${crypto.color} animate-bounce`} 
+                                        style={{ animationDelay: crypto.delay }}
+                                    />
+                                </div>
+                            );
+                        })}
+                        
+                        {/* Center Pulse Circle */}
+                        <div className="absolute inset-0 rounded-full border-4 border-green-400 animate-ping opacity-60"></div>
+                        <div className="absolute inset-4 rounded-full border-2 border-green-500 animate-pulse"></div>
+                    </div>
+                </div>
+
+                {/* Loading Text */}
+                <h2 className="text-4xl font-bold bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent mb-4">
+                    CRYPTO PULSE
+                </h2>
+                <p className="text-xl text-gray-300 mb-8">{loadingText}</p>
+
+                {/* Progress Bar */}
+                <div className="w-80 max-w-full mx-auto mb-6 px-4">
+                    <div className="w-full bg-gray-800 rounded-full h-3 overflow-hidden">
+                        <div 
+                            className="h-full bg-gradient-to-r from-green-500 to-green-400 rounded-full transition-all duration-300 ease-out shadow-lg shadow-green-500/50"
+                            style={{ width: `${progress}%` }}
+                        ></div>
+                    </div>
+                    <p className="text-sm text-gray-400 mt-2">{progress}% Complete</p>
+                </div>
+
+                {/* Loading Messages */}
+                <div className="space-y-2 text-sm text-gray-400 px-4">
+                    {progress > 20 && <p className="animate-fade-in">Connecting to blockchain networks...</p>}
+                    {progress > 40 && <p className="animate-fade-in">Fetching real-time market data...</p>}
+                    {progress > 60 && <p className="animate-fade-in">Loading advanced analytics...</p>}
+                    {progress > 80 && <p className="animate-fade-in">Initializing dashboard...</p>}
+                    {progress >= 100 && <p className="text-green-400 animate-fade-in">Ready to launch! 🚀</p>}
+                </div>
+            </div>
 
             <style jsx>{`
                 @keyframes fade-in {

@@ -16,6 +16,7 @@ import {
 } from "react-icons/fa";
 import { BiTrendingUp } from "react-icons/bi";
 import { SiDogecoin, SiLitecoin } from "react-icons/si";
+import Link from 'next/link';
 
 // Crypto Loader :-
 

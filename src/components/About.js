@@ -213,12 +213,9 @@ export default function AboutSection() {
             <div className="animate-fade-in">
                 {/* Home Button (Top right*/}
                 <div className="absolute top-6 right-6 z-20">
-                    <a
-                        href="/"
+                    <Link href="/"Home
                         className="px-5 py-2 rounded-full bg-gradient-to-r from-green-500 to-green-700 text-black font-bold shadow-lg shadow-green-500/30 hover:scale-110 hover:shadow-green-400/50 transition-transform duration-300"
-                    >
-                        Home
-                    </a>
+                        ></Link>
                 </div>
 
                 {/* Hero Header */}

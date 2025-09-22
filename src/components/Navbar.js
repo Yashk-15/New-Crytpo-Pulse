@@ -174,9 +174,9 @@ export default function Navbar({ onSearch }) {
 
   // Memoize navigation items to prevent re-renders
   const navigationItems = useMemo(() => [
-    { label: "Discover", path: "/" },
+    { label: "About", path: "/" },
+    { label: "Discover", path: "/discover" },
     { label: "Liquidity", path: "/Liquidity" },
-    { label: "About", path: "/about" },
   ], []);
 
   // Handle search input changes

@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { FaBitcoin } from 'react-icons/fa';
-import Navbar from '../components/Navbar';
-import About from '../components/About';
+import Navbar from '../../components/Navbar';
+import TopCoins from '../../components/TopCoins';
 
 // Simple Main Page Loader
 const MainPageLoader = () => {
@@ -36,7 +36,7 @@ const MainPageLoader = () => {
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-green-400 to-green-600 bg-clip-text text-transparent mb-2">
                     CRYPTO PULSE
                 </h1>
-                <p className="text-gray-400 text-sm mb-6">Loading About page...</p>
+                <p className="text-gray-400 text-sm mb-6">Loading market data</p>
 
                 {/* progress bar */}
                 <div className="w-full max-w-xs mx-auto">
@@ -52,7 +52,7 @@ const MainPageLoader = () => {
     );
 };
 
-export default function Page() {
+export default function DiscoverPage() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -70,7 +70,17 @@ export default function Page() {
     return (
         <div className="animate-fade-in">
             <Navbar />
-            <About />
+            <TopCoins />
+            <div className="mx-auto max-w-7xl px-6 py-6">
+                <div className="mt-6 grid grid-cols-12 gap-6">
+                    <aside className="col-span-12 lg:col-span-4">
+                        {/* component for updation in future if side bar has to be developed. */}
+                    </aside>
+                    
+                    <main className="col-span-12 lg:col-span-8 space-y-6">
+                    </main>
+                </div>
+            </div>
 
             <style jsx>{`
                 @keyframes fade-in {
@@ -84,4 +94,3 @@ export default function Page() {
         </div>
     );
 }
-

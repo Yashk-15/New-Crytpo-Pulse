@@ -1,13 +1,12 @@
-// src/components/CoinPageLayout.js
+
 "use client";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { FaHome, FaStar, FaPlus, FaCheck, FaTimes } from "react-icons/fa";
+import { FaHome, FaStar, FaPlus, FaCheck, FaTimes, FaArrowLeft } from "react-icons/fa";
 import { addToPortfolio, getPortfolio } from "../utils/portfolio";
 import { addToWatchlist, removeFromWatchlist, isInWatchlist } from "../utils/watchlist";
 
 // Watchlist Success Toast notifications :-
-
 const WatchlistToast = ({ isVisible, onClose, coinName, coinSymbol, coinImage, isAdded }) => {
   useEffect(() => {
     if (isVisible) {
@@ -71,7 +70,6 @@ const WatchlistToast = ({ isVisible, onClose, coinName, coinSymbol, coinImage, i
 };
 
 // Success Toast Component for Portfolio addition :-
-
 const SuccessToast = ({ isVisible, onClose, coinName, amount, coinSymbol, coinImage }) => {
   useEffect(() => {
     if (isVisible) {
@@ -133,7 +131,6 @@ const SuccessToast = ({ isVisible, onClose, coinName, amount, coinSymbol, coinIm
 };
 
 // Floating Stars for Watchlist :-
-
 const FloatingStars = ({ isVisible, coinImage }) => {
   if (!isVisible) return null;
 
@@ -158,7 +155,6 @@ const FloatingStars = ({ isVisible, coinImage }) => {
 };
 
 // Watchlist Button :-
-
 const WatchlistButton = ({ onClick, isInWatchlist, isLoading }) => {
   if (isLoading) {
     return (
@@ -250,6 +246,20 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
     }
   }, [coinId]);
 
+  // Listen for watchlist updates from other components
+  useEffect(() => {
+    const handleWatchlistUpdate = (event) => {
+      if (event.detail?.coinId === coinId) {
+        setIsInWatchlistState(event.detail.action === 'add');
+      }
+    };
+
+    window.addEventListener('watchlist:updated', handleWatchlistUpdate);
+    return () => {
+      window.removeEventListener('watchlist:updated', handleWatchlistUpdate);
+    };
+  }, [coinId]);
+
   const handleAddToPortfolio = async () => {
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
       return;
@@ -280,7 +290,7 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
   const handleWatchlistToggle = async () => {
     try {
       setIsWatchlistLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 500)); // doing API delay for better UX
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulating API delay for better UX
       
       if (isInWatchlistState) {
         removeFromWatchlist(coinId);
@@ -293,10 +303,6 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
         setShowFloatingStars(true);
         setTimeout(() => setShowFloatingStars(false), 2500);
       }
-      // Trigger watchlist update event
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('watchlist:updated'));
-      }
       
       setShowWatchlistToast(true);
     } catch (error) {
@@ -304,6 +310,11 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
     } finally {
       setIsWatchlistLoading(false);
     }
+  };
+
+  // Handle back navigation - go to discover instead of browser back
+  const handleBackNavigation = () => {
+    router.push('/discover');
   };
 
   return (
@@ -339,10 +350,18 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             
-            {/* Home Button */}
-            <div className="flex items-center">
+            {/* Back and Home Button */}
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => router.push('/')}
+                onClick={handleBackNavigation}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white font-medium transition-all duration-200 shadow-lg hover:shadow-gray-500/25 hover:scale-105"
+              >
+                <FaArrowLeft className="text-sm" />
+                <span className="text-sm">Back</span>
+              </button>
+              
+              <button
+                onClick={() => router.push('/discover')}
                 className="flex items-center gap-2 px-6 py-2 rounded-xl bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-medium transition-all duration-200 shadow-lg hover:shadow-green-500/25 hover:scale-105"
               >
                 <FaHome className="text-sm" />
@@ -373,7 +392,6 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
             )}
 
             {/* Action Buttons */}
-
             <div className="flex items-center gap-3">
               <WatchlistButton
                 onClick={handleWatchlistToggle}

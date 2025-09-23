@@ -300,8 +300,8 @@ export default function WatchlistPage() {
     });
   };
 
-  // FIXED: Proper removal with immediate UI update and verification
-  // Replace your confirmRemove function with this "nuclear" version:
+// FIXED VERSION OF src/app/watchlist/page.js
+// Replace your confirmRemove function and useEffect with this:
 
 const confirmRemove = async () => {
   if (!removeModal.coin) return;
@@ -310,103 +310,101 @@ const confirmRemove = async () => {
   const coinName = removeModal.coin.name;
   
   try {
-    console.log(`🚀 NUCLEAR REMOVE: Removing ${coinId} from watchlist...`);
+    console.log(`🚀 Removing ${coinId} from watchlist...`);
     
-    // Get current state
-    const beforeRemoval = getWatchlist();
-    console.log("Before removal:", beforeRemoval);
+    // Remove from localStorage using the utility function
+    removeFromWatchlist(coinId);
     
-    // NUCLEAR APPROACH - Multiple removal attempts
-    
-    // Method 1: Standard removal
-    localStorage.removeItem("watchlist");
-    
-    // Method 2: Clear all possible watchlist keys
-    const possibleKeys = ["watchlist", "crypto-watchlist", "user-watchlist", "my-watchlist"];
-    possibleKeys.forEach(key => {
-      if (localStorage.getItem(key)) {
-        console.log(`Found and removing key: ${key}`);
-        localStorage.removeItem(key);
-      }
-    });
-    
-    // Method 3: Rebuild without the removed coin
-    const cleanList = beforeRemoval.filter(id => id !== coinId);
-    if (cleanList.length > 0) {
-      localStorage.setItem("watchlist", JSON.stringify(cleanList));
-      console.log("Rebuilt watchlist:", cleanList);
-    }
-    
-    // Method 4: Force browser to acknowledge the change
-    await new Promise(resolve => {
-      setTimeout(() => {
-        const verification = JSON.parse(localStorage.getItem("watchlist") || "[]");
-        console.log("Immediate verification:", verification);
-        
-        if (verification.includes(coinId)) {
-          console.error("⚠️ Still there! Trying aggressive removal...");
-          
-          // Super aggressive - clear everything and rebuild
-          localStorage.clear();
-          sessionStorage.clear();
-          
-          const finalList = beforeRemoval.filter(id => id !== coinId);
-          if (finalList.length > 0) {
-            localStorage.setItem("watchlist", JSON.stringify(finalList));
-          }
-          
-          console.log("Final aggressive result:", JSON.parse(localStorage.getItem("watchlist") || "[]"));
-        }
-        
-        resolve();
-      }, 100);
-    });
-    
-    // Update UI immediately
+    // IMMEDIATELY update UI state - don't wait for refetch
     setCoins(prevCoins => prevCoins.filter(coin => coin.id !== coinId));
     setRemoveModal({ isOpen: false, coin: null });
     setError(null);
     
-    // Final verification after 1 second
-    setTimeout(() => {
-      const finalCheck = getWatchlist();
-      console.log("Final verification after 1 second:", finalCheck);
-      
-      if (finalCheck.includes(coinId)) {
-        console.error("❌ FAILED: Coin is still there after nuclear removal!");
-        setError(`Failed to remove ${coinName}. Please clear browser data and try again.`);
-      } else {
-        console.log("✅ SUCCESS: Nuclear removal completed!");
+    // Dispatch custom event with source identifier to prevent refetch loop
+    window.dispatchEvent(new CustomEvent("watchlist:updated", {
+      detail: { 
+        action: "remove", 
+        coinId,
+        source: "watchlist-page", // ← This prevents the refetch!
+        timestamp: Date.now()
       }
-    }, 1000);
+    }));
+    
+    console.log(`✅ SUCCESS: ${coinName} removed from watchlist`);
     
   } catch (error) {
-    console.error('❌ Nuclear removal failed:', error);
+    console.error('❌ Removal failed:', error);
     setError(`Error removing ${coinName}: ${error.message}`);
+    // On error, refetch to restore correct state
+    fetchData();
   }
 };
 
-// Also add this debug function to see what's happening on page load:
-
+// ALSO UPDATE the useEffect to better handle events:
 useEffect(() => {
-  console.log("=== WATCHLIST PAGE LOADED ===");
-  console.log("Initial watchlist:", getWatchlist());
-  console.log("Raw localStorage:", localStorage.getItem("watchlist"));
-  console.log("All localStorage keys:", Object.keys(localStorage));
-  
   fetchData();
-}, []);
 
-// Add a "Clear All" button for testing (temporary):
+  const handleWatchlistUpdate = (event) => {
+    console.log('Watchlist update event received:', event.detail);
+    
+    // Don't refetch if the update came from this same page
+    if (event.detail?.source === 'watchlist-page') {
+      console.log('Ignoring event from same page to prevent refetch loop');
+      return;
+    }
+    
+    // Don't refetch immediately on remove events - let the other component handle its UI
+    if (event.detail?.action === 'remove') {
+      console.log('Skipping refetch for remove event from other component');
+      // Instead, just update our local state
+      if (event.detail?.coinId) {
+        setCoins(prevCoins => prevCoins.filter(coin => coin.id !== event.detail.coinId));
+      }
+      return;
+    }
+    
+    // Only refetch for add events or other updates
+    if (event.detail?.action === 'add') {
+      console.log('Refetching due to add event from other component');
+      fetchData();
+    }
+  };
 
-const handleClearAll = () => {
-  if (confirm("Clear entire watchlist?")) {
-    localStorage.clear();
-    sessionStorage.clear();
-    setCoins([]);
-    console.log("✅ Cleared all data");
-  }
+  const handleStorageChange = (e) => {
+    if (e.key === "watchlist") {
+      console.log('Storage change detected from another tab:', e.newValue);
+      // Only refetch for storage changes from other tabs
+      setTimeout(() => fetchData(), 100); // Small delay to ensure localStorage is updated
+    }
+  };
+
+  window.addEventListener('watchlist:updated', handleWatchlistUpdate);
+  window.addEventListener('storage', handleStorageChange);
+
+  return () => {
+    window.removeEventListener('watchlist:updated', handleWatchlistUpdate);
+    window.removeEventListener('storage', handleStorageChange);
+  };
+}, []); // Remove isInitialLoad dependency
+
+// ADDITIONAL: Add this verification function for debugging
+const verifyWatchlistState = () => {
+  const currentWatchlist = getWatchlist();
+  const displayedCoins = coins.map(coin => coin.id);
+  
+  console.log("=== WATCHLIST STATE VERIFICATION ===");
+  console.log("localStorage watchlist:", currentWatchlist);
+  console.log("Displayed coins:", displayedCoins);
+  console.log("Coins that shouldn't be displayed:", 
+    displayedCoins.filter(id => !currentWatchlist.includes(id))
+  );
+  console.log("====================================");
+  
+  return { currentWatchlist, displayedCoins };
 };
+
+// Call this after any removal for debugging:
+// verifyWatchlistState();
 
   // ... (rest of your JSX remains the same)
   if (loading && isInitialLoad) {

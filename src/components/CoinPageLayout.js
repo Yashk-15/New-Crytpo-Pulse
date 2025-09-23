@@ -287,30 +287,73 @@ export default function CoinPageLayout({ children, coinId, coinName, coinSymbol,
     }
   };
 
-  const handleWatchlistToggle = async () => {
-    try {
-      setIsWatchlistLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulating API delay for better UX
+  // FIXED VERSION OF handleWatchlistToggle in CoinPageLayout.js
+// Replace your handleWatchlistToggle function with this:
+
+const handleWatchlistToggle = async () => {
+  if (isWatchlistLoading) return; // Prevent multiple clicks
+  
+  try {
+    setIsWatchlistLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const currentState = isInWatchlistState;
+    console.log(`Toggling watchlist for ${coinId}: currently ${currentState ? 'in' : 'not in'} watchlist`);
+    
+    if (currentState) {
+      // Remove from watchlist
+      removeFromWatchlist(coinId);
+      setIsInWatchlistState(false);
+      setWatchlistAction('removed');
       
-      if (isInWatchlistState) {
-        removeFromWatchlist(coinId);
-        setIsInWatchlistState(false);
-        setWatchlistAction('removed');
-      } else {
-        addToWatchlist(coinId);
-        setIsInWatchlistState(true);
-        setWatchlistAction('added');
-        setShowFloatingStars(true);
-        setTimeout(() => setShowFloatingStars(false), 2500);
-      }
+      // Dispatch event with source identifier
+      window.dispatchEvent(new CustomEvent("watchlist:updated", {
+        detail: { 
+          action: "remove", 
+          coinId,
+          source: "coin-page", // Identify the source
+          timestamp: Date.now()
+        }
+      }));
       
-      setShowWatchlistToast(true);
-    } catch (error) {
-      console.error("Failed to update watchlist:", error);
-    } finally {
-      setIsWatchlistLoading(false);
+    } else {
+      // Add to watchlist
+      addToWatchlist(coinId);
+      setIsInWatchlistState(true);
+      setWatchlistAction('added');
+      setShowFloatingStars(true);
+      setTimeout(() => setShowFloatingStars(false), 2500);
+      
+      // Dispatch event with source identifier
+      window.dispatchEvent(new CustomEvent("watchlist:updated", {
+        detail: { 
+          action: "add", 
+          coinId,
+          source: "coin-page",
+          timestamp: Date.now()
+        }
+      }));
     }
-  };
+    
+    setShowWatchlistToast(true);
+    
+    // Verify the change was successful
+    setTimeout(() => {
+      const actualState = isInWatchlist(coinId);
+      if (actualState !== !currentState) {
+        console.error(`⚠️ Watchlist state mismatch for ${coinId}. Expected: ${!currentState}, Actual: ${actualState}`);
+        setIsInWatchlistState(actualState); // Correct the state
+      }
+    }, 100);
+    
+  } catch (error) {
+    console.error("Failed to update watchlist:", error);
+    // Reset to correct state on error
+    setIsInWatchlistState(isInWatchlist(coinId));
+  } finally {
+    setIsWatchlistLoading(false);
+  }
+};
 
   // Handle back navigation - go to discover instead of browser back
   const handleBackNavigation = () => {

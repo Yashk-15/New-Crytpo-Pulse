@@ -10,6 +10,3 @@ export default function AboutPage() {
     </div>
   );
 }
-export default function AboutPage() {
-  return <About/>;
-}

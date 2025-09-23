@@ -1,22 +1,32 @@
 "use client";
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 
-// Custom hook for debounced search with caching
-function useOptimizedSearch(searchTerm, delay = 300) {
+// ---------------------------
+// Navigation Items (static)
+// ---------------------------
+const NAVIGATION_ITEMS = [
+  { label: "About", path: "/" },
+  { label: "Discover", path: "/discover" },
+  { label: "Liquidity", path: "/Liquidity" }, // lowercase for consistency
+];
+
+// ---------------------------
+// Custom hook: Optimized search
+// ---------------------------
+function useOptimizedSearch(searchTerm, delay = 300, cacheLimit = 50) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  
+
   const cache = useRef(new Map());
   const abortController = useRef(null);
 
   const debouncedSearch = useCallback(
     async (term) => {
       const trimmedTerm = term.trim();
-      
       if (!trimmedTerm) {
         setResults([]);
         setLoading(false);
@@ -36,13 +46,13 @@ function useOptimizedSearch(searchTerm, delay = 300) {
       if (abortController.current) {
         abortController.current.abort();
       }
-
       abortController.current = new AbortController();
 
       try {
-        const response = await fetch(`/api/search?query=${encodeURIComponent(trimmedTerm)}`, {
-          signal: abortController.current.signal,
-        });
+        const response = await fetch(
+          `/api/search?query=${encodeURIComponent(trimmedTerm)}`,
+          { signal: abortController.current.signal }
+        );
 
         if (!response.ok) {
           throw new Error(`Search failed: ${response.status}`);
@@ -50,19 +60,19 @@ function useOptimizedSearch(searchTerm, delay = 300) {
 
         const data = await response.json();
         const limitedResults = (data.coins || []).slice(0, 10);
-        
+
         // Cache the results
         cache.current.set(trimmedTerm, limitedResults);
-        
-        // Clean cache if it gets too large
-        if (cache.current.size > 50) {
+
+        // Keep cache size under limit
+        if (cache.current.size > cacheLimit) {
           const firstKey = cache.current.keys().next().value;
           cache.current.delete(firstKey);
         }
 
         setResults(limitedResults);
       } catch (err) {
-        if (err.name !== 'AbortError') {
+        if (err.name !== "AbortError") {
           setError(err.message);
           setResults([]);
         }
@@ -70,7 +80,7 @@ function useOptimizedSearch(searchTerm, delay = 300) {
         setLoading(false);
       }
     },
-    []
+    [cacheLimit]
   );
 
   useEffect(() => {
@@ -89,14 +99,16 @@ function useOptimizedSearch(searchTerm, delay = 300) {
   return { results, loading, error };
 }
 
-// Virtual dropdown component for better performance
-function SearchDropdown({ 
-  results, 
-  loading, 
-  error, 
-  onSelect, 
-  highlightedIndex, 
-  itemRefs 
+// ---------------------------
+// Dropdown Component
+// ---------------------------
+function SearchDropdown({
+  results,
+  loading,
+  error,
+  onSelect,
+  highlightedIndex,
+  itemRefs,
 }) {
   if (loading) {
     return (
@@ -119,9 +131,7 @@ function SearchDropdown({
     );
   }
 
-  if (results.length === 0) {
-    return null;
-  }
+  if (results.length === 0) return null;
 
   return (
     <ul className="absolute left-0 mt-2 w-full bg-gray-800 rounded-lg shadow-lg border border-gray-700 max-h-60 overflow-y-auto z-30">
@@ -148,7 +158,9 @@ function SearchDropdown({
           </div>
           <div className="truncate">
             <span className="font-medium">{coin.name}</span>
-            <span className="text-gray-400 ml-1">({coin.symbol.toUpperCase()})</span>
+            <span className="text-gray-400 ml-1">
+              ({coin.symbol.toUpperCase()})
+            </span>
           </div>
         </li>
       ))}
@@ -156,6 +168,9 @@ function SearchDropdown({
   );
 }
 
+// ---------------------------
+// Navbar Component
+// ---------------------------
 export default function Navbar({ onSearch }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -163,89 +178,91 @@ export default function Navbar({ onSearch }) {
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [navigationLoading, setNavigationLoading] = useState(false);
-  
+
   const itemRefs = useRef([]);
   const searchInputRef = useRef(null);
+  const containerRef = useRef(null);
 
-  // Using optimized search hook
-  const { results: searchResults, loading, error } = useOptimizedSearch(searchTerm);
-
-  // Memoize navigation items to prevent re-renders
-  const navigationItems = useMemo(() => [
-    { label: "About", path: "/" },
-    { label: "Discover", path: "/discover" },
-    { label: "Liquidity", path: "/Liquidity" },
-  ], []);
+  const { results: searchResults, loading, error } = useOptimizedSearch(
+    searchTerm
+  );
 
   // Handle search input changes
-  const handleSearchChange = useCallback((e) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    setHighlightedIndex(-1);
-    setIsDropdownOpen(value.trim().length > 0);
-    onSearch?.(value);
-  }, [onSearch]);
+  const handleSearchChange = useCallback(
+    (e) => {
+      const value = e.target.value;
+      setSearchTerm(value);
+      setHighlightedIndex(-1);
+      setIsDropdownOpen(value.trim().length > 0);
+      onSearch?.(value);
+    },
+    [onSearch]
+  );
 
-  // Optimized coin selection with loading state
-  const handleSelectCoin = useCallback((coin) => {
-    setSearchTerm(coin.name);
-    setIsDropdownOpen(false);
-    setHighlightedIndex(-1);
-    setNavigationLoading(true);
-    onSearch?.(coin.id);
-    
-    // Add loading timeout to prevent indefinite loading
-    setTimeout(() => setNavigationLoading(false), 3000);
-    
-    router.replace(`/coingecko/${coin.id}`);
-  }, [router, onSearch]);
-
-  // Navigation click handler with loading state
-  const handleNavClick = useCallback((href) => {
-    if (pathname !== href) {
+  // Handle selecting a coin
+  const handleSelectCoin = useCallback(
+    (coin) => {
+      setSearchTerm(coin.name);
+      setIsDropdownOpen(false);
+      setHighlightedIndex(-1);
       setNavigationLoading(true);
-      // Reset loading after navigation timeout
-      setTimeout(() => setNavigationLoading(false), 2000);
-    }
-  }, [pathname]);
+      onSearch?.(coin.id);
+
+      setTimeout(() => setNavigationLoading(false), 3000);
+
+      router.push(`/coingecko/${coin.id}`);
+    },
+    [router, onSearch]
+  );
+
+  // Handle navigation clicks
+  const handleNavClick = useCallback(
+    (href) => {
+      if (pathname !== href) {
+        setNavigationLoading(true);
+        setTimeout(() => setNavigationLoading(false), 2000);
+      }
+    },
+    [pathname]
+  );
 
   // Keyboard navigation
-  const handleKeyDown = useCallback((e) => {
-    if (!isDropdownOpen || searchResults.length === 0) return;
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (!isDropdownOpen || searchResults.length === 0) return;
 
-    switch (e.key) {
-      case "ArrowDown":
-        e.preventDefault();
-        setHighlightedIndex((prev) =>
-          prev < searchResults.length - 1 ? prev + 1 : 0
-        );
-        break;
-      case "ArrowUp":
-        e.preventDefault();
-        setHighlightedIndex((prev) =>
-          prev > 0 ? prev - 1 : searchResults.length - 1
-        );
-        break;
-      case "Enter":
-        e.preventDefault();
-        if (highlightedIndex >= 0 && searchResults[highlightedIndex]) {
-          handleSelectCoin(searchResults[highlightedIndex]);
-        }
-        break;
-      case "Escape":
-        setIsDropdownOpen(false);
-        setHighlightedIndex(-1);
-        searchInputRef.current?.blur();
-        break;
-    }
-  }, [isDropdownOpen, searchResults, highlightedIndex, handleSelectCoin]);
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setHighlightedIndex((prev) =>
+            prev < searchResults.length - 1 ? prev + 1 : 0
+          );
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setHighlightedIndex((prev) =>
+            prev > 0 ? prev - 1 : searchResults.length - 1
+          );
+          break;
+        case "Enter":
+          e.preventDefault();
+          if (highlightedIndex >= 0 && searchResults[highlightedIndex]) {
+            handleSelectCoin(searchResults[highlightedIndex]);
+          }
+          break;
+        case "Escape":
+          setIsDropdownOpen(false);
+          setHighlightedIndex(-1);
+          searchInputRef.current?.blur();
+          break;
+      }
+    },
+    [isDropdownOpen, searchResults, highlightedIndex, handleSelectCoin]
+  );
 
   // Auto-scroll highlighted item
   useEffect(() => {
-    if (
-      highlightedIndex >= 0 &&
-      itemRefs.current[highlightedIndex]
-    ) {
+    if (highlightedIndex >= 0 && itemRefs.current[highlightedIndex]) {
       itemRefs.current[highlightedIndex].scrollIntoView({
         block: "nearest",
         behavior: "smooth",
@@ -256,16 +273,18 @@ export default function Navbar({ onSearch }) {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (searchInputRef.current && !searchInputRef.current.contains(event.target)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target)
+      ) {
         setIsDropdownOpen(false);
         setHighlightedIndex(-1);
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
+    return () =>
       document.removeEventListener("mousedown", handleClickOutside);
-    };
   }, []);
 
   // Reset navigation loading on route change
@@ -306,7 +325,7 @@ export default function Navbar({ onSearch }) {
 
           {/* Navigation */}
           <nav className="flex-1 flex items-center gap-2 justify-center">
-            {navigationItems.map((item) => {
+            {NAVIGATION_ITEMS.map((item) => {
               const isActive = pathname === item.path;
               return (
                 <Link key={item.label} href={item.path} prefetch={true}>
@@ -328,7 +347,7 @@ export default function Navbar({ onSearch }) {
           {/* Search + Actions */}
           <div className="flex items-center gap-3">
             {/* Enhanced search box */}
-            <div className="relative">
+            <div ref={containerRef} className="relative">
               <input
                 ref={searchInputRef}
                 value={searchTerm}
@@ -342,7 +361,7 @@ export default function Navbar({ onSearch }) {
                    focus:ring-green-400 placeholder-gray-400 transition-all
                    w-48 focus:w-56"
               />
-              
+
               {/* Search icon */}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -369,7 +388,11 @@ export default function Navbar({ onSearch }) {
                   }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
                 >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <svg
+                    className="w-4 h-4"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
                     <path
                       fillRule="evenodd"
                       d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"

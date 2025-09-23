@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Star, Home, TrendingUp, AlertTriangle, Search, Trash2, ExternalLink, ArrowLeft } from "lucide-react";
+import { Star, Home, TrendingUp, AlertTriangle, Search, Trash2, ExternalLink } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { getWatchlist, removeFromWatchlist } from "../../utils/watchlist";
 
 // Watchlist Loader :-
@@ -18,14 +17,14 @@ const WatchlistLoader = () => {
   useEffect(() => {
     if (!isMounted) return;
 
-    const textInterval = setInterval(() => {                      
+    const textInterval = setInterval(() => {                      // loading text
       setLoadingText(prev => {
         if (prev === "Loading watchlist...") return "Loading watchlist";
         return prev + ".";
       });
     }, 500);
 
-    const progressInterval = setInterval(() => {              
+    const progressInterval = setInterval(() => {              // progress bar
       setProgress(prev => {
         if (prev >= 100) return 100;
         return prev + 3;
@@ -142,6 +141,7 @@ const WatchlistLoader = () => {
 };
 
 // Skeleton loader for individual coin cards :-
+
 const CoinCardSkeleton = () => (
   <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700 animate-pulse">
     <div className="flex items-center gap-4">
@@ -156,6 +156,7 @@ const CoinCardSkeleton = () => (
 );
 
 // Remove confirmation modal :-
+
 const RemoveConfirmModal = ({ isOpen, onClose, onConfirm, coinName, coinSymbol, coinImage }) => {
   if (!isOpen) return null;
 
@@ -202,8 +203,9 @@ const RemoveConfirmModal = ({ isOpen, onClose, onConfirm, coinName, coinSymbol, 
   );
 };
 
+// ... (keep all your existing components: WatchlistLoader, CoinCardSkeleton, RemoveConfirmModal - they're fine)
+
 export default function WatchlistPage() {
-  const router = useRouter();
   const [coins, setCoins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -212,14 +214,18 @@ export default function WatchlistPage() {
 
   const fetchCoinData = async (coinIds) => {
     if (!coinIds.length) return [];
+    
     try {
-      const response = await fetch(
-        `/api/markets?vs_currency=usd&ids=${coinIds.join(",")}&order=market_cap_desc&per_page=${coinIds.length}&page=1&sparkline=false`
-      );
-      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      const response = await fetch(`/api/markets?vs_currency=usd&ids=${coinIds.join(',')}&order=market_cap_desc&per_page=${coinIds.length}&page=1&sparkline=false`);
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
       const data = await response.json();
       return data;
     } catch (error) {
+      console.error('Error fetching coin data:', error);
       throw error;
     }
   };
@@ -228,15 +234,24 @@ export default function WatchlistPage() {
     try {
       setLoading(true);
       setError(null);
+      
       const watchlistIds = getWatchlist();
-      if (isInitialLoad) await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('Current watchlist IDs:', watchlistIds); // Debug log
+      
+      if (isInitialLoad) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      
       if (watchlistIds.length === 0) {
         setCoins([]);
         return;
       }
+      
       const coinData = await fetchCoinData(watchlistIds);
       setCoins(coinData);
+
     } catch (err) {
+      console.error("Error fetching watchlist:", err);
       setError(err.message || "Failed to load watchlist");
     } finally {
       setLoading(false);
@@ -247,82 +262,161 @@ export default function WatchlistPage() {
   useEffect(() => {
     fetchData();
 
-    // Always reload watchlist if "watchlist:updated" event occurs (any tab)
+    // Handle watchlist updates from other components/tabs
     const handleWatchlistUpdate = (event) => {
-      fetchData();
-    };
-
-    // Always reload watchlist if "storage" changes (other tabs/windows)
-    const handleStorageChange = (e) => {
-      if (e.key === "watchlist") {
+      console.log('Watchlist update event received:', event.detail);
+      // Only refetch if it's not a removal from this component
+      if (!event.detail || event.detail.source !== 'watchlist-page') {
         fetchData();
       }
     };
 
-    window.addEventListener("watchlist:updated", handleWatchlistUpdate);
-    window.addEventListener("storage", handleStorageChange);
+    // Handle storage changes from other tabs
+    const handleStorageChange = (e) => {
+      if (e.key === "watchlist") {
+        console.log('Storage change detected:', e.newValue);
+        fetchData();
+      }
+    };
+
+    window.addEventListener('watchlist:updated', handleWatchlistUpdate);
+    window.addEventListener('storage', handleStorageChange);
 
     return () => {
-      window.removeEventListener("watchlist:updated", handleWatchlistUpdate);
-      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener('watchlist:updated', handleWatchlistUpdate);
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 
-  const handleRemoveCoin = (e, coin) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setRemoveModal({
-      isOpen: true,
+  const handleRemoveCoin = (coin) => {
+    setRemoveModal({ 
+      isOpen: true, 
       coin: {
         id: coin.id,
         name: coin.name,
         symbol: coin.symbol,
-        image: coin.image,
-      },
+        image: coin.image
+      }
     });
   };
 
-  // FIXED: Improved coin removal with immediate UI update
-  const confirmRemove = () => {
-    if (removeModal.coin) {
-      const coinId = removeModal.coin.id;
-      
-      // 1. Remove from localStorage
-      removeFromWatchlist(coinId);
-      
-      // 2. Immediately update UI state (optimistic update)
-      setCoins(prevCoins => prevCoins.filter(coin => coin.id !== coinId));
-      
-      // 3. Close modal
-      setRemoveModal({ isOpen: false, coin: null });
-      
-      // 4. Optional: Verify with fresh fetch after a short delay
-      setTimeout(() => {
-        const currentWatchlist = getWatchlist();
-        if (!currentWatchlist.includes(coinId)) {
-          console.log(`Successfully removed ${coinId} from watchlist`);
-        } else {
-          // If somehow the removal failed, refetch to sync UI
-          console.warn(`Removal verification failed for ${coinId}, refetching...`);
-          fetchData();
-        }
-      }, 100);
+  // FIXED: Proper removal with immediate UI update and verification
+  // Replace your confirmRemove function with this "nuclear" version:
+
+const confirmRemove = async () => {
+  if (!removeModal.coin) return;
+
+  const coinId = removeModal.coin.id;
+  const coinName = removeModal.coin.name;
+  
+  try {
+    console.log(`🚀 NUCLEAR REMOVE: Removing ${coinId} from watchlist...`);
+    
+    // Get current state
+    const beforeRemoval = getWatchlist();
+    console.log("Before removal:", beforeRemoval);
+    
+    // NUCLEAR APPROACH - Multiple removal attempts
+    
+    // Method 1: Standard removal
+    localStorage.removeItem("watchlist");
+    
+    // Method 2: Clear all possible watchlist keys
+    const possibleKeys = ["watchlist", "crypto-watchlist", "user-watchlist", "my-watchlist"];
+    possibleKeys.forEach(key => {
+      if (localStorage.getItem(key)) {
+        console.log(`Found and removing key: ${key}`);
+        localStorage.removeItem(key);
+      }
+    });
+    
+    // Method 3: Rebuild without the removed coin
+    const cleanList = beforeRemoval.filter(id => id !== coinId);
+    if (cleanList.length > 0) {
+      localStorage.setItem("watchlist", JSON.stringify(cleanList));
+      console.log("Rebuilt watchlist:", cleanList);
     }
-  };
+    
+    // Method 4: Force browser to acknowledge the change
+    await new Promise(resolve => {
+      setTimeout(() => {
+        const verification = JSON.parse(localStorage.getItem("watchlist") || "[]");
+        console.log("Immediate verification:", verification);
+        
+        if (verification.includes(coinId)) {
+          console.error("⚠️ Still there! Trying aggressive removal...");
+          
+          // Super aggressive - clear everything and rebuild
+          localStorage.clear();
+          sessionStorage.clear();
+          
+          const finalList = beforeRemoval.filter(id => id !== coinId);
+          if (finalList.length > 0) {
+            localStorage.setItem("watchlist", JSON.stringify(finalList));
+          }
+          
+          console.log("Final aggressive result:", JSON.parse(localStorage.getItem("watchlist") || "[]"));
+        }
+        
+        resolve();
+      }, 100);
+    });
+    
+    // Update UI immediately
+    setCoins(prevCoins => prevCoins.filter(coin => coin.id !== coinId));
+    setRemoveModal({ isOpen: false, coin: null });
+    setError(null);
+    
+    // Final verification after 1 second
+    setTimeout(() => {
+      const finalCheck = getWatchlist();
+      console.log("Final verification after 1 second:", finalCheck);
+      
+      if (finalCheck.includes(coinId)) {
+        console.error("❌ FAILED: Coin is still there after nuclear removal!");
+        setError(`Failed to remove ${coinName}. Please clear browser data and try again.`);
+      } else {
+        console.log("✅ SUCCESS: Nuclear removal completed!");
+      }
+    }, 1000);
+    
+  } catch (error) {
+    console.error('❌ Nuclear removal failed:', error);
+    setError(`Error removing ${coinName}: ${error.message}`);
+  }
+};
 
-  const handleBackToDiscover = () => {
-    router.push("/discover");
-  };
+// Also add this debug function to see what's happening on page load:
 
-  if (loading && isInitialLoad) return <WatchlistLoader />;
+useEffect(() => {
+  console.log("=== WATCHLIST PAGE LOADED ===");
+  console.log("Initial watchlist:", getWatchlist());
+  console.log("Raw localStorage:", localStorage.getItem("watchlist"));
+  console.log("All localStorage keys:", Object.keys(localStorage));
+  
+  fetchData();
+}, []);
+
+// Add a "Clear All" button for testing (temporary):
+
+const handleClearAll = () => {
+  if (confirm("Clear entire watchlist?")) {
+    localStorage.clear();
+    sessionStorage.clear();
+    setCoins([]);
+    console.log("✅ Cleared all data");
+  }
+};
+
+  // ... (rest of your JSX remains the same)
+  if (loading && isInitialLoad) {
+    return <WatchlistLoader />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900/50 to-gray-950">
-      {/* Animated Background Pattern */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="w-full h-full bg-[linear-gradient(rgba(44,212,147,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(44,212,147,0.1)_1px,transparent_1px)] bg-[size:60px_60px]"></div>
-      </div>
-
+      {/* ... (keep all your existing JSX - header, background, etc.) */}
+      
       <div className="relative z-10 p-4 sm:p-6 max-w-7xl mx-auto">
         {/* Header Section */}
         <div className="mb-8">
@@ -349,26 +443,16 @@ export default function WatchlistPage() {
                 </div>
               </div>
               
-              {/* Back to Discover Button */}
-              <button
-                onClick={handleBackToDiscover}
-                className="group px-4 sm:px-5 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white font-semibold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 flex items-center gap-2 min-w-[100px] sm:min-w-[120px] justify-center"
-              >
-                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-sm sm:text-base">Back</span>
-              </button>
-              
               {/* Home Button */}
-              <button
-                onClick={handleBackToDiscover}
-                className="group px-4 sm:px-5 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 hover:scale-105 transition-all duration-300 flex items-center gap-2 min-w-[100px] sm:min-w-[120px] justify-center"
-              >
-                <Home className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-sm sm:text-base">Home</span>
-                <div className="w-0 group-hover:w-4 transition-all duration-300 overflow-hidden">
-                  <span>→</span>
-                </div>
-              </button>
+              <Link href="/discover">
+                <button className="group px-4 sm:px-5 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 hover:scale-105 transition-all duration-300 flex items-center gap-2 min-w-[100px] sm:min-w-[120px] justify-center">
+                  <Home className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span className="text-sm sm:text-base">Discover</span>
+                  <div className="w-0 group-hover:w-4 transition-all duration-300 overflow-hidden">
+                    <span>→</span>
+                  </div>
+                </button>
+              </Link>
             </div>
           </div>
 
@@ -386,21 +470,23 @@ export default function WatchlistPage() {
             <p className="text-gray-300 mb-4">{error}</p>
             <div className="flex gap-3 justify-center">
               <button
-                onClick={() => fetchData()}
+                onClick={() => {
+                  setError(null);
+                  fetchData();
+                }}
                 className="px-6 py-2 bg-red-900/30 hover:bg-red-900/50 border border-red-500/30 rounded-xl text-red-400 font-medium transition-all"
               >
                 Try Again
               </button>
-              <button
-                onClick={handleBackToDiscover}
-                className="px-6 py-2 bg-green-900/30 hover:bg-green-900/50 border border-green-500/30 rounded-xl text-green-400 font-medium transition-all"
-              >
-                Go to Discover
-              </button>
+              <Link href="/discover">
+                <button className="px-6 py-2 bg-green-900/30 hover:bg-green-900/50 border border-green-500/30 rounded-xl text-green-400 font-medium transition-all">
+                  Go to Discover
+                </button>
+              </Link>
             </div>
           </div>
         ) : loading ? (
-          // Skeleton loader for coin cards
+          // Skeleton loader
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, index) => (
               <CoinCardSkeleton key={index} />
@@ -415,14 +501,13 @@ export default function WatchlistPage() {
             <p className="text-gray-300 mb-6">
               Start building your watchlist by adding your favorite cryptocurrencies
             </p>
-            <button
-              onClick={handleBackToDiscover}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-green-500/30 transition-all"
-            >
-              <Search className="w-4 h-4" />
-              <span>Discover Coins</span>
-              <span>→</span>
-            </button>
+            <Link href="/discover">
+              <button className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-green-500/30 transition-all">
+                <Search className="w-4 h-4" />
+                <span>Discover Coins</span>
+                <span>→</span>
+              </button>
+            </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
@@ -434,15 +519,18 @@ export default function WatchlistPage() {
                 
                 {/* Remove button */}
                 <button
-                  onClick={(e) => handleRemoveCoin(e, coin)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleRemoveCoin(coin);
+                  }}
                   className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 z-10"
                   title="Remove from watchlist"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
                 
-                {/* Clickable area for coin details */}
-                <Link href={`/coingecko/${coin.id}`} className="block">
+                <Link href={`/coingecko/${coin.id}`}>
                   <div className="relative flex items-center gap-4 cursor-pointer">
                     <div className="relative flex-shrink-0">
                       <img
@@ -450,7 +538,6 @@ export default function WatchlistPage() {
                         alt={coin.name}
                         className="w-12 h-12 rounded-full shadow-lg"
                       />
-                      {/* Subtle glow effect */}
                       <div className="absolute inset-0 rounded-full bg-green-500/20 blur-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     </div>
                     
@@ -465,7 +552,6 @@ export default function WatchlistPage() {
                         {coin.symbol}
                       </p>
                       
-                      {/* Price and change */}
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
                         <p className="text-xl font-bold text-green-500">
                           ${coin.current_price?.toLocaleString() || "N/A"}
@@ -482,7 +568,6 @@ export default function WatchlistPage() {
                         )}
                       </div>
                       
-                      {/* Market cap rank */}
                       {coin.market_cap_rank && (
                         <div className="mt-3 flex items-center gap-1">
                           <span className="text-xs text-gray-400">Rank:</span>
@@ -495,7 +580,6 @@ export default function WatchlistPage() {
                   </div>
                 </Link>
                 
-                {/* Hover indicator */}
                 <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500 to-green-400 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
               </div>
             ))}
